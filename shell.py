@@ -5,8 +5,8 @@ from threading import Timer
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, QObject, QTimer
 from code import InteractiveInterpreter
 from rlcompleter import Completer
-from debug import debug
-import sys
+from qidle.debug import debug
+import sys, os
 
 
 
@@ -36,6 +36,7 @@ class remoteShell(Process):
         self.completer = Completer(self.locals)
         self.pipe = pipe
         self.stderr_proxy = ProxyWriter(self,"stderr")
+        self.os = os
         self.locals['__shell__'] = self
         
         

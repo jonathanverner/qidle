@@ -2,16 +2,16 @@
 # <Copyright and license information goes here.>
 from PyQt4 import QtCore
 from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir
-from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog
+from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont
 
 
 from idlelib.PyParse import Parser as PyParser
 
 import os
 
-from textblock import TextBlock, block_type_for_stream
-from syntax import PythonHighlighter
-from debug import debug
+from qidle.textblock import TextBlock, block_type_for_stream
+from qidle.syntax import PythonHighlighter
+from qidle.debug import debug
 
 class Console(QObject):
     
@@ -141,14 +141,19 @@ class Console(QObject):
     read_line = pyqtSignal(unicode)
     restart_shell = pyqtSignal()
     interrupt_shell = pyqtSignal()
+    quit = pyqtSignal()
     
     def __init__(self, widget):
         super(Console,self).__init__()
+        self.font_size = 10
+        self.font = QFont("Ubuntu Mono",self.font_size)
         self.allow_quit = True
         self.indent = self.DEFAULT_INDENT
         self.widget = widget
         self.hilighter = PythonHighlighter(self.widget.document())
         self.parser = PyParser(self.indent, self.indent)
+        
+        self.widget.setFont(self.font)
         
         # The source file's we are watching
         self.watcher = QFileSystemWatcher()
@@ -183,6 +188,18 @@ class Console(QObject):
     @property
     def mode(self):
         return self._mode
+    
+    @pyqtSlot()
+    def increase_font(self):
+        self.font_size += 1
+        self.font = QFont("Ubuntu Mono",self.font_size)
+        self.widget.setFont(self.font)
+        
+    @pyqtSlot()
+    def decrease_font(self):
+        self.font_size -= 1
+        self.font = QFont("Ubuntu Mono",self.font_size)
+        self.widget.setFont(self.font)
     
     @pyqtSlot(unicode, unicode)
     def write(self, string, stream="stdout"):
@@ -219,6 +236,12 @@ class Console(QObject):
         new_code_block = self._appendBlock(TextBlock.TYPE_CODE_START)
         self._gotoEnd()
         self._mode = Console.MODE_CODE_EDITING
+        
+    @pyqtSlot()
+    def load_file_dlg(self):
+        fname = QFileDialog.getOpenFileName(self.widget, "Watch a Python Source File", QDir.currentPath(), "Python Source Files (*.py)")
+        self.watcher.addPath(fname)
+        self.watcher.fileChanged.emit(fname)
         
     def _wantToSubmit(self):
         if self.parser.get_continuation_type():
@@ -321,16 +344,22 @@ class Console(QObject):
         # Ctrl-Q Handling
         if event.matches(QKeySequence.Quit):
             if self.allow_quit:
-                debug("Quitting ...")
-                self.widget.close()
+                self.quit.emit()
+                #debug("Quitting ...")
+                #self.widget.close()
                 event.ignore()
             return
         
+        # Ctrl-+/- Handling
+        if event.matches(QKeySequence.ZoomIn):
+            self.increase_font()
+            return
+        if event.matches(QKeySequence.ZoomOut):
+            self.decrease_font()
+        
         # Ctrl-O Handling
         if event.matches(QKeySequence.Open) and self.mode == Console.MODE_CODE_EDITING:
-            fname = QFileDialog.getOpenFileName(self.widget, "Watch a Python Source File", QDir.currentPath(), "Python Source Files (*.py)")
-            self.watcher.addPath(fname)
-            self.watcher.fileChanged.emit(fname)
+            self.load_file_dlg()
             event.ignore()
             return
         
@@ -428,7 +457,7 @@ class Console(QObject):
                         #model = QFileSystemModel()
                         #debug("Current Path:", QDir.currentPath())
                         #model.setRootPath(QDir.currentPath())
-                        if not in_string_prefix[0] == os.sep:
+                        if len(in_string_prefix) == 0 or not in_string_prefix[0] == os.sep:
                             in_string_prefix = unicode(QDir.currentPath()+QDir.separator()+ in_string_prefix)
                         debug("prefix", in_string_prefix)
                         self.completer.setModel(model)
@@ -485,9 +514,12 @@ class Console(QObject):
     def _sourceChanged(self, fname):
         debug("Console.sourceChanged: ", fname)
         if self._mode == Console.MODE_CODE_EDITING:
-            self._appendBlock(TextBlock.TYPE_MESSAGE,content="Reloading file " + unicode(fname))
+            self._appendBlock(TextBlock.TYPE_MESSAGE,content="Reloading file " + os.path.basename(unicode(fname)) + " and changing dir to " + os.path.dirname(unicode(fname)))
             self._appendBlock(TextBlock.TYPE_OUTPUT_STDOUT)
             self._mode = Console.MODE_RUNNING
             self.run_code.emit(unicode("execfile('"+fname+"')\n"))
+            self.run_code.emit(unicode("__shell__.os.chdir(__shell__.os.path.dirname('"+fname+"'))\n"))
+            debug("Changing to directory", os.path.dirname(unicode(fname)))
+            os.chdir(os.path.dirname(unicode(fname)))
         else: 
             debug("Console.sourceChanged: ignoring change, because not in CODE EDITING MODE", fname)

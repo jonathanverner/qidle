@@ -6,9 +6,8 @@ import sys
 from PyQt4.QtCore import QRegExp
 from PyQt4.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
 
-from util import python_3
-from debug import debug
-from textblock import TextBlock
+from qidle.debug import debug
+from qidle.textblock import TextBlock
 
 def format(color, style=''):
     """Return a QTextCharFormat with the given attributes.
@@ -145,10 +144,7 @@ class PythonHighlighter (QSyntaxHighlighter):
             while index >= 0:
                 # We actually want the index of the nth match
                 index = expression.pos(nth)
-                if python_3:
-                    length = len(expression.cap(nth))
-                else:
-                    length = expression.cap(nth).length()
+                length = len(expression.cap(nth))
                     
                 self.setFormat(index, length, format)
                 index = expression.indexIn(text, index + length)

@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QGraphicsLinearLayout, QApplication, QPlainTextEdit, QFont
+from PyQt4.QtGui import QGraphicsLinearLayout, QApplication, QPlainTextEdit, QFont, QMenu, QMainWindow, QMenuBar
 
-from util import python_3
-from shell import ShellManager, remoteShell
-from console import Console
+from qidle.shell import ShellManager, remoteShell
+from qidle.console import Console
 
 import sys
 
@@ -16,12 +15,34 @@ if __name__ == "__main__":
     app.setStyleSheet("""
       QPlainTextEdit { border:none; }
     """);
+    
+    main = QMainWindow()
+    menubar = QMenuBar()
+    main.setMenuBar(menubar)
+    main.setWindowTitle(main.tr("Q-Idle Python Shell"))
+    menus = {'File':QMenu(main.tr("&File")),
+             'Shell':QMenu(main.tr("&Shell")),
+             'Edit':QMenu(main.tr("&Edit")),
+             'View':QMenu(main.tr("&View")),
+             'Settings':QMenu(main.tr("&Settings")),
+             'Help':QMenu(main.tr("&Help")),
+             }
+    
+    open_file_action = menus['File'].addAction(main.tr("&Load File"))
+    quit_action = menus['File'].addAction(main.tr("&Quit"))
+    restart_shell_action = menus['Shell'].addAction(main.tr("&Restart Shell"))
+    increase_font = menus['View'].addAction(main.tr("&Increase Font Size"))
+    decrease_font = menus['View'].addAction(main.tr("&Decrease Font Size"))
+    for m in ['File','Edit','View','Shell','Settings','Help']:
+        menubar.addMenu(menus[m])
+    
     edit = QPlainTextEdit()
     ubuntuMono = QFont("Ubuntu Mono",10)
     edit.setFont(ubuntuMono)
     console = Console(edit)
     edit.keyPressEvent = console.keyPressEvent
     edit.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    
     shellManager.waitingForInput.connect(console.do_readline)
     shellManager.write.connect(console.write)
     shellManager.finished_running.connect(console.finished_running)
@@ -31,9 +52,20 @@ if __name__ == "__main__":
     console.interrupt_shell.connect(shellManager.interrupt)
     console.restart_shell.connect(shellManager.restart_shell)
     console.get_completions = shellManager.get_completions
+    main.setCentralWidget(edit)
+    console.quit.connect(shellManager.quit)
+    console.quit.connect(app.closeAllWindows)
+    
+    open_file_action.triggered.connect(console.load_file_dlg)
+    restart_shell_action.triggered.connect(shellManager.interrupt)
+    quit_action.triggered.connect(console.quit)
+    increase_font.triggered.connect(console.increase_font)
+    decrease_font.triggered.connect(console.decrease_font)
+    
     app.lastWindowClosed.connect(shellManager.quit)
-    edit.resize(600,500)
-    edit.show()
+    main.resize(600,500)
+    #edit.show()
+    main.show()
     app.exec_()
 
 else:
