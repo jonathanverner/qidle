@@ -119,6 +119,8 @@ class remoteShell(Process):
             data = self.pipe.recv()
             if self._processCommand(data, allowed_commands = ['flushed','interrupt']):
                 return
+    def close(self):
+        return
         
 class ShellManager(QObject):
     
