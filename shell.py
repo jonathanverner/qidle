@@ -99,7 +99,7 @@ class remoteShell(Process):
         data.stream = stream_name
         self.pipe.send(data)
         if self.pipe.poll():
-            self._processCommand(data, allowed_commands=['interrupt'])
+            self._processCommand(self.pipe.recv(), allowed_commands=['interrupt'])
         
     def writeMSG(self,str):
         self.writeToStream(str,"msg")
