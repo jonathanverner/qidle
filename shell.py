@@ -27,7 +27,7 @@ class ProxyWriter(object):
         pass
 
 class remoteShell(Process):
-    def __init__(self,pipe,locals=None,filename='<console>'):
+    def __init__(self,pipe,locals=None,filename=None):
         Process.__init__(self)
         self.locals = locals
         if not self.locals:
