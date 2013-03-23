@@ -13,6 +13,8 @@ from qidle.textblock import TextBlock, block_type_for_stream
 from qidle.syntax import PythonHighlighter
 from qidle.debug import debug
 
+from remote.utils import signal
+
 class Console(QObject):
     
     @property
@@ -137,10 +139,11 @@ class Console(QObject):
     MODE_READ_ONLY = 3
     MODE_WAITING_FOR_INTERRUPT = 4
     
-    run_code = pyqtSignal(unicode)
-    read_line = pyqtSignal(unicode)
-    restart_shell = pyqtSignal()
-    interrupt_shell = pyqtSignal()
+    #run_code = pyqtSignal(unicode)
+    run_code = signal(unicode)
+    read_line = signal(unicode)
+    restart_shell = signal()
+    interrupt_shell = signal()
     quit = pyqtSignal()
     
     def __init__(self, widget):
@@ -202,7 +205,7 @@ class Console(QObject):
         self.widget.setFont(self.font)
     
     @pyqtSlot(unicode, unicode)
-    def write(self, string, stream="stdout"):
+    def write(self, stream, string):
         assert self.mode == Console.MODE_RUNNING or self.mode == Console.MODE_WAITING_FOR_INTERRUPT, "Cannot write to console in "+str(self.mode) +" (need to be RUNNING/INTERRUPT mode) "
         lines = string.split('\n')
         block_type = block_type_for_stream(stream)

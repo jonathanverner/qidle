@@ -4,13 +4,24 @@
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QGraphicsLinearLayout, QApplication, QPlainTextEdit, QFont, QMenu, QMainWindow, QMenuBar
 
-from qidle.shell import ShellManager, remoteShell
 from qidle.console import Console
+from remote_shell import RemoteShell
+from remote.factory import RemoteFactory
 
 import sys
 
+import logging
+from debug import msg
+logger = logging.getLogger(__name__)
+
+
 if __name__ == "__main__":
-    shellManager = ShellManager(remoteShell)
+    
+    logger.debug("Starting qidle...")
+    f = RemoteFactory()
+    f.start()
+    rs = f.create_object(RemoteShell)
+    
     app = QApplication(sys.argv)
     app.setStyleSheet("""
       QPlainTextEdit { border:none; }
@@ -42,27 +53,27 @@ if __name__ == "__main__":
     console = Console(edit)
     edit.keyPressEvent = console.keyPressEvent
     edit.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+    rs.waiting_for_input.connect(console.do_readline)
+    rs.write_to_stream.connect(console.write)
+    rs.execute_finished.connect(console.finished_running)
     
-    shellManager.waitingForInput.connect(console.do_readline)
-    shellManager.write.connect(console.write)
-    shellManager.finished_running.connect(console.finished_running)
-    shellManager.shell_restarted.connect(console.shell_restarted)
-    console.run_code.connect(shellManager.execute_code)
-    console.read_line.connect(shellManager.sendInput)
-    console.interrupt_shell.connect(shellManager.interrupt)
-    console.restart_shell.connect(shellManager.restart_shell)
-    console.get_completions = shellManager.get_completions
+    console.run_code.connect(rs.execute)
+    console.read_line.connect(rs.input_handler)
+    console.interrupt_shell.connect(rs.interrupt)
+    console.get_completions = rs.completion
     main.setCentralWidget(edit)
-    console.quit.connect(shellManager.quit)
+    console.quit.connect(rs.terminate)
     console.quit.connect(app.closeAllWindows)
     
     open_file_action.triggered.connect(console.load_file_dlg)
-    restart_shell_action.triggered.connect(shellManager.interrupt)
+    restart_shell_action.triggered.connect(rs.interrupt)
     quit_action.triggered.connect(console.quit)
     increase_font.triggered.connect(console.increase_font)
     decrease_font.triggered.connect(console.decrease_font)
     
-    app.lastWindowClosed.connect(shellManager.quit)
+    app.lastWindowClosed.connect(rs.terminate)
+    app.lastWindowClosed.connect(f.destroy)
     main.resize(600,500)
     #edit.show()
     main.show()
