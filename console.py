@@ -467,7 +467,7 @@ class Console(QObject):
                         debug("Getting code completions for ", completion_prefix, "...")
                         completions = self.get_completions(completion_prefix)
                         debug("Got completions:", ','.join(completions))
-                        model = QStringListModel(self.get_completions(completion_prefix))
+                        model = QStringListModel(completions)
                         self.completer.setModel(model)
                         self.completer.setCompletionPrefix(completion_prefix)
                     self.completer.popup().setCurrentIndex(self.completer.completionModel().index(0,0))
