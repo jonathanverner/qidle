@@ -1,26 +1,28 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QTimer
 from PyQt4.QtGui import QGraphicsLinearLayout, QApplication, QPlainTextEdit, QFont, QMenu, QMainWindow, QMenuBar
 
-from qidle.console import Console
-from remote_shell import RemoteShell
-from remote.factory import RemoteFactory
+from qidlelib.console import Console
+from qidlelib.qeventloop import QEventLoop
+from qidlelib.insulated_shell import InsulatedShell
+from qidlelib.insulate.factory import InsulatedFactory
 
 import sys
 
 import logging
-from debug import msg
+from qidlelib.insulate.debug import msg
 logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
     
     logger.debug("Starting qidle...")
-    f = RemoteFactory()
+    event_loop = QEventLoop()
+    f = InsulatedFactory(event_loop = event_loop)
     f.start()
-    rs = f.create_object(RemoteShell)
+    rs = f.create_object(InsulatedShell)
     
     app = QApplication(sys.argv)
     app.setStyleSheet("""
@@ -77,6 +79,7 @@ if __name__ == "__main__":
     main.resize(600,500)
     #edit.show()
     main.show()
+    f.start_event_loop()
     app.exec_()
 
 else:

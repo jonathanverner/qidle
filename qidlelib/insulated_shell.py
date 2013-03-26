@@ -2,16 +2,11 @@ from code import InteractiveInterpreter
 from rlcompleter import Completer
 import sys, os
 
-from remote.utils import signal
+from insulate.utils import signal
 
 import logging
-from remote.debug import msg, filt
+from insulate.debug import msg, filt
 logger = logging.getLogger(__name__)
-filt.enable_module(__name__)
-filt.enable_module('remote.objects')
-filt.enable_module('remote.utils')
-filt.enable_module('remote.RemoteFactory')
-
 
 class SignalStream(object):
     write = signal()
@@ -25,23 +20,26 @@ class SignalStream(object):
         self.flush = signal()
         self.close = signal()
         
-        self.__wait = signal()
+        self._wait = signal()
         self.have_input = False
 
         
     def readline(self):
+        logger.debug("Emitting waiting for input")
         self.waiting_for_input.emit()
+        logger.debug("Emitted waiting for input")
         while not self.have_input:
-            self.__wait.emit()
+            self._wait.emit()
         self.have_input = False
         return self.input
         
     def input_handler(self, str):
+        logger.debug(msg("Got input", str))
         self.have_input = True
         self.input = str
         
 
-class RemoteShell(object):
+class InsulatedShell(object):
     write_to_stream = signal(str,str)
     execute_finished = signal()
     waiting_for_input = signal()
@@ -80,15 +78,17 @@ class RemoteShell(object):
         sys.stdin.waiting_for_input.connect(self.waiting_for_input)
         logger.debug("Shell streams connected.")
         
-        logger.debug("Shell connecting stdin __wait.")
+    def isolated_init(self):
+        logger.debug("Shell connecting stdin _wait.")
         try:
-            sys.stdin.__wait.connect(self.__wait)
-        except:
-            pass
-        logger.debug("Shell initialized.")
+            sys.stdin._wait.connect(self._wait)
+        except Exception, e:
+            logger.debug(msg("Unable to connect _wait:", e))
+            
         
     def input_handler(self, string):
-        self.stdin.input_handler(string)
+        logger.debug(msg("Got input", string))
+        sys.stdin.input_handler(string)
         
     def execute(self, code):
         code = unicode(code)

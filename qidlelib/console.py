@@ -9,11 +9,14 @@ from idlelib.PyParse import Parser as PyParser
 
 import os
 
-from qidle.textblock import TextBlock, block_type_for_stream
-from qidle.syntax import PythonHighlighter
-from qidle.debug import debug
+from textblock import TextBlock, block_type_for_stream
+from syntax import PythonHighlighter
 
-from remote.utils import signal
+import logging
+from insulate.debug import msg, debug
+logger = logging.getLogger(__name__)
+
+from insulate.utils import signal
 
 class Console(QObject):
     
@@ -85,7 +88,7 @@ class Console(QObject):
         return b
     
     def _joinCurrentToPreviousBlock(self):
-        debug("Deleting current block")
+        logger.debug(msg("Deleting current block"))
         cur = self._currentBlock
         prev = cur.previous()
         prev.appendText(cur.content())
@@ -113,7 +116,7 @@ class Console(QObject):
             ret.append(block_content[pos])
             pos -=1
         ret.reverse()
-        debug("_guessCursorInString: ", ''.join(ret))
+        logger.debug(msg(msg("_guessCursorInString: ", ''.join(ret))))
         return ''.join(ret)
         
         
@@ -248,26 +251,26 @@ class Console(QObject):
         
     def _wantToSubmit(self):
         if self.parser.get_continuation_type():
-            debug("_wantToSubmit: Is continuation, returning False")
+            logger.debug(msg("_wantToSubmit: Is continuation, returning False"))
             return False
         if self.parser.is_block_opener():
-            debug("_wantToSubmit: Is block opener, returning False")
+            logger.debug(msg("_wantToSubmit: Is block opener, returning False"))
             return False
         cur_line_content = self._currentBlock.content()
         if len(cur_line_content) == cur_line_content.count(" "):
-            debug("_wantToSubmit: empty line, returning True")
+            logger.debug(msg("_wantToSubmit: empty line, returning True"))
             return True
         if len(self.parser.get_base_indent_string()) == 0:
-            debug("_wantToSubmit: Base indent string is short, returning True ")
+            logger.debug(msg("_wantToSubmit: Base indent string is short, returning True "))
             return True
-        debug("_wantToSubmit: returning False")
+        logger.debug(msg("_wantToSubmit: returning False"))
         return False
             
     def _process_enter(self):
-        debug("_process_enter: running...")
+        logger.debug(msg("_process_enter: running..."))
         # Apply History
         if not self._lastBlock.isCursorInRelatedCodeBlock(self._currentCursor) and not self._lastBlock.containsCursor(self._currentCursor):
-            debug("_process_enter: applying history...")
+            logger.debug(msg("_process_enter: applying history..."))
             if self._currentBlock.type in TextBlock.CODE_TYPES:
                 hist = map(lambda x:x.content(),self._currentBlock.relatedCodeBlocks())
             else:
@@ -287,7 +290,7 @@ class Console(QObject):
         elif self.mode == Console.MODE_CODE_EDITING:
             # decide whether to run the code
             if self._lastBlock.containsCursor(self._currentCursor):
-                debug("Deciding whether to run code...")
+                logger.debug(msg("Deciding whether to run code..."))
                 code = "\n".join(map(lambda x:x.content(),self._currentBlock.relatedCodeBlocks()))
                 self.parser.set_str(code+"\n")
                 if self._wantToSubmit():
@@ -319,9 +322,10 @@ class Console(QObject):
             ret = "\n".join(map(lambda x:x.activeContent(),self._currentBlock.relatedInputBlocks()))
             self._appendBlock(TextBlock.TYPE_OUTPUT_STDOUT)
             self._mode = Console.MODE_RUNNING
+            logger.debug(msg("Emmitting read_line(",ret,")"))
             self.read_line.emit(ret)
         
-        debug("_process_enter: finished.")
+        logger.debug(msg("_process_enter: finished."))
         
     def _process_completion_widget(self, event):
         if self.completer.popup().isVisible():
@@ -348,7 +352,7 @@ class Console(QObject):
         if event.matches(QKeySequence.Quit):
             if self.allow_quit:
                 self.quit.emit()
-                #debug("Quitting ...")
+                #logger.debug(msg("Quitting ..."))
                 #self.widget.close()
                 event.ignore()
             return
@@ -455,27 +459,27 @@ class Console(QObject):
                 try:
                     # Filename completion when in string
                     if in_string_prefix is not None:
-                        debug("Filename completion")
+                        logger.debug(msg("Filename completion"))
                         model = QDirModel()
                         #model = QFileSystemModel()
-                        #debug("Current Path:", QDir.currentPath())
+                        #logger.debug(msg("Current Path:", QDir.currentPath()))
                         #model.setRootPath(QDir.currentPath())
                         if len(in_string_prefix) == 0 or not in_string_prefix[0] == os.sep:
                             in_string_prefix = unicode(QDir.currentPath()+QDir.separator()+ in_string_prefix)
-                        debug("prefix", in_string_prefix)
+                        logger.debug(msg("prefix", in_string_prefix))
                         self.completer.setModel(model)
                         self.completer.setCompletionPrefix(in_string_prefix)
                     # Otherwise we do normal code completion
                     else:
-                        debug("Getting code completions for ", completion_prefix, "...")
+                        logger.debug(msg("Getting code completions for ", completion_prefix, "..."))
                         completions = self.get_completions(completion_prefix,_async=False)
-                        debug("Got completions:", ','.join(completions))
+                        logger.debug(msg("Got completions:", ','.join(completions)))
                         model = QStringListModel(completions)
                         self.completer.setModel(model)
                         self.completer.setCompletionPrefix(completion_prefix)
                     self.completer.popup().setCurrentIndex(self.completer.completionModel().index(0,0))
                 except Exception, e:
-                    debug("Exception when completing:", str(e))
+                    logger.debug(msg("Exception when completing:", str(e)))
                     if completion_prefix != self.completer.completionPrefix():
                         self.completer.setCompletionPrefix(completion_prefix)
                         self.completer.popup().setCurrentIndex(self.completer.completionModel().index(0,0))
@@ -501,28 +505,28 @@ class Console(QObject):
             
         
     def dropEvent(self, e):
-        debug("Drag drop event")
+        logger.debug(msg("Drag drop event"))
         file_url = QUrl(e.mimeData().text())
         if file_url.isValid() and file_url.isLocalFile():
             fname = file_url.toLocalFile()
             if fname in self.watcher.files():
-                debug("OldConsole.dropEvent: already watching file", fname)
+                logger.debug(msg("OldConsole.dropEvent: already watching file", fname))
             else:
-                debug("OldConsole.dropEvent: adding new file", fname)
+                logger.debug(msg("OldConsole.dropEvent: adding new file", fname))
                 self.watcher.addPath(file_url.toLocalFile())
-                debug("OldConsole.dropEvent: emmiting file changed signal")
+                logger.debug(msg("OldConsole.dropEvent: emmiting file changed signal"))
                 self.watcher.fileChanged.emit(fname)
     
     @pyqtSlot(str)    
     def _sourceChanged(self, fname):
-        debug("Console.sourceChanged: ", fname)
+        logger.debug(msg("Console.sourceChanged: ", fname))
         if self._mode == Console.MODE_CODE_EDITING:
             self._appendBlock(TextBlock.TYPE_MESSAGE,content="Reloading file " + os.path.basename(unicode(fname)) + " and changing dir to " + os.path.dirname(unicode(fname)))
             self._appendBlock(TextBlock.TYPE_OUTPUT_STDOUT)
             self._mode = Console.MODE_RUNNING
             self.run_code.emit(unicode("execfile('"+fname+"')\n"))
             self.run_code.emit(unicode("__shell__.os.chdir(__shell__.os.path.dirname('"+fname+"'))\n"))
-            debug("Changing to directory", os.path.dirname(unicode(fname)))
+            logger.debug(msg("Changing to directory", os.path.dirname(unicode(fname))))
             os.chdir(os.path.dirname(unicode(fname)))
         else: 
-            debug("Console.sourceChanged: ignoring change, because not in CODE EDITING MODE", fname)
+            logger.debug(msg("Console.sourceChanged: ignoring change, because not in CODE EDITING MODE", fname))

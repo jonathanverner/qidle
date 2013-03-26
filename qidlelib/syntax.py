@@ -6,8 +6,8 @@ import sys
 from PyQt4.QtCore import QRegExp
 from PyQt4.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
 
-from qidle.debug import debug
-from qidle.textblock import TextBlock
+from insulate.debug import debug
+from textblock import TextBlock
 
 def format(color, style=''):
     """Return a QTextCharFormat with the given attributes.
