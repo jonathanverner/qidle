@@ -1,0 +1,17 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=PyShell
+Type=Service
+ServiceTypes=Plasma/Applet
+Icon=text-x-python
+X-Plasma-API=python
+X-Plasma-MainScript=code/main.py
+X-KDE-PluginInfo-Author=Jonathan Verner
+X-KDE-PluginInfo-Email=jonathan.verner@matfyz.cz
+X-KDE-PluginInfo-Name=pyshell-widget
+X-KDE-PluginInfo-Version=1.0
+X-KDE-PluginInfo-Website=http://jonathan.verner.matfyz.cz/code
+X-KDE-PluginInfo-Category=Development Tools
+X-KDE-PluginInfo-Depends=
+X-KDE-PluginInfo-License=GPL
+X-KDE-PluginInfo-EnabledByDefault=true

@@ -1,22 +1,22 @@
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
-from PyQt4 import QtCore
-from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir
-from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont
-
-
-from idlelib.PyParse import Parser as PyParser
 
 import os
-
-from textblock import TextBlock, block_type_for_stream
-from syntax import PythonHighlighter
-
 import logging
 from insulate.debug import msg, debug
 logger = logging.getLogger(__name__)
 
+from PyQt4 import QtCore
+from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir, QTimer
+from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont
+
+from idlelib.PyParse import Parser as PyParser
 from insulate.utils import signal
+
+from textblock import TextBlock, block_type_for_stream
+from syntax import PythonHighlighter
+
+
 
 class Console(QObject):
     
