@@ -70,8 +70,11 @@ class ShellWidget(QObject):
         self._connect_shell()
         
     def restart_shell(self):
+        logger.debug("Restarting shell ...")
         self.kill_shell()
         self.start_shell()
+        self.console.shell_restarted()
+        logger.debug("Shell restarted ...")
         
         
     def quit(self):

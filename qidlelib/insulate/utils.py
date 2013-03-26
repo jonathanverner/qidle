@@ -56,10 +56,31 @@ def disconnect_object_signals(object):
         s.disconnect_all()
     
     
+class SingleShotException(object):
+    def __init__(self, e):
+        self.exception = e
+        self.already_raised = False
+    
+    def throw(self):
+        if not self.already_raised:
+            self.already_raised = True
+            raise self.exception
+        
+    def cancel(self):
+        self.already_raised = True
+        
+    def restart(self):
+        self.already_raised = False
+
 class signal(object):
+
     def __init__(self, *args, **kwargs):
         self.callbacks = []
         self.named_callbacks = []
+        self.exception = None
+    
+    def _raise_exception_on_emit(self, e):
+        self.exception = e
         
     def connect_named(self, name, callback):
         self.named_callbacks.append((name,callback))
@@ -84,6 +105,13 @@ class signal(object):
         self.named_callbacks = []
         
     def emit(self, *args, **kwargs):
+        if self.exception is not None:
+            e = self.exception
+            self.exception = None
+            if type(e) == SingleShotException:
+                e.throw()
+            else:
+                raise e
         for c in self.callbacks:
             if type(c) == signal:
                 logger.debug(msg("Emmitting signal", c))

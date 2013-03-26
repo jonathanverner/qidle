@@ -2,7 +2,7 @@ from code import InteractiveInterpreter
 from rlcompleter import Completer
 import sys, os
 
-from insulate.utils import signal
+from insulate.utils import signal, SingleShotException, rpc
 
 import logging
 from insulate.debug import msg, filt
@@ -13,6 +13,8 @@ class SignalStream(object):
     waiting_for_input = signal()
     flush = signal()
     close = signal()
+    
+    keyboard_interrupt = SingleShotException(KeyboardInterrupt)
     
     def __init__(self):
         self.write = signal()
@@ -37,7 +39,13 @@ class SignalStream(object):
         logger.debug(msg("Got input", str))
         self.have_input = True
         self.input = str
-        
+    
+    def interrupt(self):
+        self.keyboard_interrupt.restart()
+        self.write._raise_exception_on_emit(SignalStream.keyboard_interrupt)
+        self.waiting_for_input._raise_exception_on_emit(SignalStream.keyboard_interrupt)
+        self.flush._raise_exception_on_emit(SignalStream.keyboard_interrupt)
+        self.close._raise_exception_on_emit(SignalStream.keyboard_interrupt)
 
 class InsulatedShell(object):
     write_to_stream = signal(str,str)
@@ -98,10 +106,18 @@ class InsulatedShell(object):
         logger.debug("*"*30)
         ret = self.interpreter.runsource(code+"\n")
         logger.debug(msg("Finished run, ret == ", ret))
+        SignalStream.keyboard_interrupt.cancel()
         self.execute_finished.emit()
         
     def interrupt(self):
-        raise KeyboardInterrupt
+        sys.stdin.interrupt()
+        sys.stderr.interrupt()
+        sys.stdout.interrupt()
+        self.msg_stream.interrupt()
+        
+    def _message_priority(self, message_name):
+        if message_name == 'interrupt':
+            return rpc.PRIORITY_INTERRUPT
         
     def completion(self, prefix):
         ret = []
@@ -115,3 +131,5 @@ class InsulatedShell(object):
                 logger.debug("Too many completions, quitting ...")
                 break
         return ret
+    
+    
