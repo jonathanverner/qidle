@@ -1,3 +1,4 @@
+from time import time
 from multiprocessing.process import Process
 from utils import rpc, signal, _insert_sorted
 from eventloop import ThreadedEventLoop
@@ -46,14 +47,28 @@ class local_proxy(object):
             del kwargs['_async']
         else:
             async = True
+        if '_timeout' in kwargs:
+            timeout = kwargs['_timeout']
+            del kwargs['_timeout']
+            async = False
+            if '_default' in kwargs:
+                default_ret = kwargs['_default']
+                del kwargs['_default']
+            else:
+                default_ret = None
+        else:
+            timeout = None
         command = rpc( method_name, *args, **kwargs )
         command.priority = p
         logger.debug(msg("Dispatching rpc for ", method_name))
         self.pipe.send(command)
+        time_start = time()
         while not async:
             ret = self._process_command(block = True, return_response_to = command.message_id)
             if ret is not None:
                 return ret
+            if timeout is not None and time()-time_start > timeout:
+                return default_ret
     
     def _process_command(self, block = False, return_response_to = None):
         if not block and not self.pipe.poll():

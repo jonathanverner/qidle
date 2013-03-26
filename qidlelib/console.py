@@ -471,7 +471,7 @@ class Console(QObject):
                     # Otherwise we do normal code completion
                     else:
                         logger.debug(msg("Getting code completions for ", completion_prefix, "..."))
-                        completions = self.get_completions(completion_prefix,_async=False)
+                        completions = self.get_completions(completion_prefix, _timeout = 1, _default = [])
                         logger.debug(msg("Got completions:", ','.join(completions)))
                         model = QStringListModel(completions)
                         self.completer.setModel(model)
