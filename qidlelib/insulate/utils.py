@@ -78,31 +78,56 @@ class signal(object):
         self.callbacks = []
         self.named_callbacks = []
         self.exception = None
+        self.todo = []
+        self.emitting = False
     
     def _raise_exception_on_emit(self, e):
         self.exception = e
         
     def connect_named(self, name, callback):
-        self.named_callbacks.append((name,callback))
+        self.todo.append(('connect_named',(name,callback)))
+        if not self.emitting:
+            self._process_todo()
         
     def connect(self, callback):
-        self.callbacks.append(callback)
+        self.todo.append(('connect',callback))
+        if not self.emitting:
+            self._process_todo()
         
     def disconnect(self,callback):
-        try:
-            self.callbacks.remove(callback)
-        except:
-            pass
-        names = []
-        for (n,c) in self.named_callbacks:
-            if c == callback:
-                names.append(n)
-        for n in names:
-            self.named_callbacks.remove((n,c))
-    
+        logger.debug(msg("Disconnecting", callback))
+        self.todo.append(('disconnect',callback))
+        if not self.emitting:
+            self._process_todo()
+            
     def disconnect_all(self):
-        self.callbacks = []
-        self.named_callbacks = []
+        logger.debug("Disconnecting all")
+        self.todo.append(('disconnect_all',))
+        if not self.emitting:
+            self._process_todo()
+            
+    def _process_todo(self):
+        while len(self.todo) > 0:
+            op = self.todo.pop(0)
+            if op[0] == 'disconnect_all':
+                self.callbacks = []
+                self.named_callbacks = []
+            elif op[0] == 'disconnect':
+                try:
+                    self.callbacks.remove(op[1])
+                except:
+                    logger.debug(msg("Callback not present", op[1]))
+                names = []
+                for (n,c) in self.named_callbacks:
+                    if c == op[1]:
+                        names.append(n)
+                for n in names:
+                    self.named_callbacks.remove((n,c))
+            elif op[0] == 'connect':
+                self.callbacks.append(op[1])
+            elif op[0] == 'connect_named':
+                self.named_callbacks.append(op[1])
+            
         
     def emit(self, *args, **kwargs):
         if self.exception is not None:
@@ -112,6 +137,7 @@ class signal(object):
                 e.throw()
             else:
                 raise e
+        self.emitting = True
         for c in self.callbacks:
             if type(c) == signal:
                 logger.debug(msg("Emmitting signal", c))
@@ -121,12 +147,14 @@ class signal(object):
                     logger.debug(msg("Running slot", c))
                     c(*args, **kwargs)
                 except Exception, e:
-                    logger.debug(msg("Exception when emitting signal", e))
+                    logger.warn(msg("Exception when emitting signal", e))
         for (name,c) in self.named_callbacks:
             try:
                 c(name, *args, **kwargs)
             except Exception, e:
-                logger.debug(msg("Exception when emitting signal", e))
+                logger.warn(msg("Exception when emitting signal", e))
+        self._process_todo()
+        self.emitting = False
     
     def __call__(self, *args, **kwargs):
         self.emit(*args, **kwargs)
