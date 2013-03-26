@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
 
-from PyQt4.QtGui import QApplication, QPlainTextEdit, QMenu, QMainWindow, QMenuBar
+from PyQt4.QtGui import QApplication, QPlainTextEdit, QTextEdit, QMenu, QMainWindow, QMenuBar
 
 from qidlelib.qeventloop import QEventLoop
 from qidlelib.insulate.factory import InsulatedFactory
@@ -22,9 +22,10 @@ class Qidle(QApplication):
 
         self.setStyleSheet("""
           QPlainTextEdit { border:none; }
+          QTextEdit { border:none; }
         """);
         
-        self.edit = QPlainTextEdit()
+        self.edit = QTextEdit()
         self.shell_widget = ShellWidget(self.factory,self.edit)
         self.shell_widget.quit_signal.connect(self.closeAllWindows)
         

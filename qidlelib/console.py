@@ -8,14 +8,15 @@ from insulate.debug import msg, debug
 logger = logging.getLogger(__name__)
 
 from PyQt4 import QtCore
-from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir, QTimer
-from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont
+from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir, QTimer, QByteArray, QVariant
+from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont, QImage, QTextDocument
 
 from idlelib.PyParse import Parser as PyParser
 from insulate.utils import signal
 
 from textblock import TextBlock, block_type_for_stream
 from syntax import PythonHighlighter
+from imageobject import ImageObject
 
 
 
@@ -225,6 +226,15 @@ class Console(QObject):
                 self._appendBlock(block_type)
             self._lastBlock.appendText(lines[-1])
             self._gotoEnd()
+    
+    def write_object(self, obj):
+        if type(obj) == ImageObject:
+	    img = QImage()
+	    img.loadFromData(QByteArray(obj.data))
+	    self._document.addResource(QTextDocument.ImageResource,QUrl(obj.url), QVariant(img))
+	    self.write('stdout','<html_snippet><img src="'+obj.url+'"/></html_snippet>')
+	    logger.debug(msg('stdout','<html_snippet><img src="',obj.url,'"/></html_snippet>'))
+	  
     
     @pyqtSlot()
     def do_readline(self):

@@ -51,6 +51,7 @@ class InsulatedShell(object):
     write_to_stream = signal(str,str)
     execute_finished = signal()
     waiting_for_input = signal()
+    write_object = signal()
         
     def __init__(self, locals = None, filename=''):
         logger.debug("Shell initializing.")

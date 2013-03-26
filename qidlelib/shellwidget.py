@@ -42,6 +42,7 @@ class ShellWidget(QObject):
         self.shell.waiting_for_input.connect(self.console.do_readline)
         self.shell.write_to_stream.connect(self.console.write)
         self.shell.execute_finished.connect(self.console.finished_running)
+        self.shell.write_object.connect(self.console.write_object)
     
         self.console.run_code.connect(self.shell.execute)
         self.console.read_line.connect(self.shell.input_handler)
