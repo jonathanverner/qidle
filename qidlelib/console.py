@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
 
+from time import time
 import os
 import logging
 from insulate.debug import msg, debug
@@ -187,6 +188,9 @@ class Console(QObject):
         self._lastBlock.appendText("PyShell v 0.5: Starting ...")
         self.start_editing()
         
+        # Restart shell timer
+        self.timer = QTimer(self)
+        
         
 
         
@@ -228,8 +232,10 @@ class Console(QObject):
     
     @pyqtSlot()
     def shell_restarted(self):
+        logger.debug("Shell restarted!")
         self._appendBlock(TextBlock.TYPE_MESSAGE,"<span style='color:green'>"+"="*20+"</span> SHELL RESTARTED <span style='color:green'>" + "="*20 +"</span>", html=True)
         self.start_editing()
+        logger.debug("Shell restarted!")
         
     @pyqtSlot()
     def finished_running(self):
@@ -339,12 +345,20 @@ class Console(QObject):
         self.completer.setWidget(self.widget)
         self._widgetFocusInEvent(event)
         
+    def _restart_shell_from_interrupt(self):
+        self.timer.stop()
+        if self._mode == Console.MODE_WAITING_FOR_INTERRUPT:
+            logger.debug("Restarting shell, since it did not respond to interrupt")
+            self.restart_shell.emit()
+        
     def keyPressEvent(self, event):
         
         # Ctrl-C Handling
         if event.matches(QKeySequence.Copy):
             if ( self._currentCursor.selection().isEmpty and ( self.mode == Console.MODE_RUNNING or self.mode == Console.MODE_RAW_INPUT ) ):
                 self._mode = Console.MODE_WAITING_FOR_INTERRUPT
+                self.timer.timeout.connect(self._restart_shell_from_interrupt)
+                self.timer.start(1000)
                 self.interrupt_shell.emit()
         
         # Ctrl-Q Handling
