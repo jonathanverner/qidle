@@ -214,14 +214,17 @@ class Console(QObject):
     @pyqtSlot(unicode, unicode)
     def write(self, stream, string):
         assert self.mode == Console.MODE_RUNNING or self.mode == Console.MODE_WAITING_FOR_INTERRUPT, "Cannot write to console in "+str(self.mode) +" (need to be RUNNING/INTERRUPT mode) "
-        lines = string.split('\n')
-        block_type = block_type_for_stream(stream)
-        for ln in lines[:-1]:
-            self._lastBlock.appendText(ln)
-            self._lastBlock.setType(block_type)
-            self._appendBlock(block_type)
-        self._lastBlock.appendText(lines[-1])
-        self._gotoEnd()
+        if string.startswith('<html_snippet>'):
+	    self._lastBlock.appendHtml(string.replace("<html_snippet>","").replace("</html_snippet>",""))
+	else:	  
+            lines = string.split('\n')
+            block_type = block_type_for_stream(stream)
+            for ln in lines[:-1]:
+                self._lastBlock.appendText(ln)
+                self._lastBlock.setType(block_type)
+                self._appendBlock(block_type)
+            self._lastBlock.appendText(lines[-1])
+            self._gotoEnd()
     
     @pyqtSlot()
     def do_readline(self):
