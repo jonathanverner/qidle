@@ -116,7 +116,7 @@ class Console(QObject):
             ret.append(block_content[pos])
             pos -=1
         ret.reverse()
-        logger.debug(msg(msg("_guessCursorInString: ", ''.join(ret))))
+        logger.debug(''.join(ret))
         return ''.join(ret)
         
         
@@ -251,26 +251,26 @@ class Console(QObject):
         
     def _wantToSubmit(self):
         if self.parser.get_continuation_type():
-            logger.debug(msg("_wantToSubmit: Is continuation, returning False"))
+            logger.debug(msg("Is continuation, returning False"))
             return False
         if self.parser.is_block_opener():
-            logger.debug(msg("_wantToSubmit: Is block opener, returning False"))
+            logger.debug(msg("Is block opener, returning False"))
             return False
         cur_line_content = self._currentBlock.content()
         if len(cur_line_content) == cur_line_content.count(" "):
-            logger.debug(msg("_wantToSubmit: empty line, returning True"))
+            logger.debug(msg("empty line, returning True"))
             return True
         if len(self.parser.get_base_indent_string()) == 0:
-            logger.debug(msg("_wantToSubmit: Base indent string is short, returning True "))
+            logger.debug(msg("Base indent string is short, returning True "))
             return True
-        logger.debug(msg("_wantToSubmit: returning False"))
+        logger.debug(msg("returning False"))
         return False
             
     def _process_enter(self):
-        logger.debug(msg("_process_enter: running..."))
+        logger.debug(msg("running..."))
         # Apply History
         if not self._lastBlock.isCursorInRelatedCodeBlock(self._currentCursor) and not self._lastBlock.containsCursor(self._currentCursor):
-            logger.debug(msg("_process_enter: applying history..."))
+            logger.debug(msg("applying history..."))
             if self._currentBlock.type in TextBlock.CODE_TYPES:
                 hist = map(lambda x:x.content(),self._currentBlock.relatedCodeBlocks())
             else:
@@ -322,10 +322,9 @@ class Console(QObject):
             ret = "\n".join(map(lambda x:x.activeContent(),self._currentBlock.relatedInputBlocks()))
             self._appendBlock(TextBlock.TYPE_OUTPUT_STDOUT)
             self._mode = Console.MODE_RUNNING
-            logger.debug(msg("Emmitting read_line(",ret,")"))
             self.read_line.emit(ret)
         
-        logger.debug(msg("_process_enter: finished."))
+        logger.debug(msg("finished."))
         
     def _process_completion_widget(self, event):
         if self.completer.popup().isVisible():
@@ -510,16 +509,16 @@ class Console(QObject):
         if file_url.isValid() and file_url.isLocalFile():
             fname = file_url.toLocalFile()
             if fname in self.watcher.files():
-                logger.debug(msg("OldConsole.dropEvent: already watching file", fname))
+                logger.debug(msg("already watching file", fname))
             else:
-                logger.debug(msg("OldConsole.dropEvent: adding new file", fname))
+                logger.debug(msg("adding new file", fname))
                 self.watcher.addPath(file_url.toLocalFile())
-                logger.debug(msg("OldConsole.dropEvent: emmiting file changed signal"))
+                logger.debug(msg("emmiting file changed signal"))
                 self.watcher.fileChanged.emit(fname)
     
     @pyqtSlot(str)    
     def _sourceChanged(self, fname):
-        logger.debug(msg("Console.sourceChanged: ", fname))
+        logger.debug(msg(fname))
         if self._mode == Console.MODE_CODE_EDITING:
             self._appendBlock(TextBlock.TYPE_MESSAGE,content="Reloading file " + os.path.basename(unicode(fname)) + " and changing dir to " + os.path.dirname(unicode(fname)))
             self._appendBlock(TextBlock.TYPE_OUTPUT_STDOUT)
@@ -529,4 +528,4 @@ class Console(QObject):
             logger.debug(msg("Changing to directory", os.path.dirname(unicode(fname))))
             os.chdir(os.path.dirname(unicode(fname)))
         else: 
-            logger.debug(msg("Console.sourceChanged: ignoring change, because not in CODE EDITING MODE", fname))
+            logger.debug(msg("Ignoring change, because not in CODE EDITING MODE", fname))

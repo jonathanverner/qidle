@@ -37,6 +37,8 @@ class ThreadedEventLoop(object):
             return
         if len(self.hooks) > 0:
             logger.debug("Starting timer")
+            self.timer.cancel()
+            self.timer = Timer(0.01, self._run)
             self.timer.start()
         else:
             self.timer.cancel()

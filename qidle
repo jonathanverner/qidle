@@ -1,13 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
-from PyQt4.QtCore import Qt, QTimer
+from PyQt4.QtCore import Qt, QTimer, QObject, pyqtSignal
 from PyQt4.QtGui import QGraphicsLinearLayout, QApplication, QPlainTextEdit, QFont, QMenu, QMainWindow, QMenuBar
 
 from qidlelib.console import Console
 from qidlelib.qeventloop import QEventLoop
-from qidlelib.insulated_shell import InsulatedShell
+from qidlelib.insulatedshell import InsulatedShell
 from qidlelib.insulate.factory import InsulatedFactory
+from qidlelib.insulate.utils import disconnect_object_signals
 
 import sys
 
@@ -15,6 +16,122 @@ import logging
 from qidlelib.insulate.debug import msg
 logger = logging.getLogger(__name__)
 
+class ShellWidget(QObject):
+    quit_signal = pyqtSignal()
+    
+    def __init__(self, factory, editor_widget):
+        super(QObject, self).__init__()
+        self.factory = factory
+        self.shell = None
+        self.edit = editor_widget
+        
+        self._construct_widget()
+        self.start_shell()
+    
+    @property
+    def editor_widget(self):
+        return self.edit
+    
+    @property
+    def console_widget(self):
+        return self.console
+        
+
+    def _construct_widget(self):
+        self.ubuntuMonoFont = QFont("Ubuntu Mono",10)
+        self.edit.setFont(self.ubuntuMonoFont)
+        self.console = Console(self.edit)
+        self.edit.keyPressEvent = self.console.keyPressEvent
+        self.edit.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.console.quit.connect(self.quit)
+        
+    def _connect_shell(self):
+        self.shell.waiting_for_input.connect(self.console.do_readline)
+        self.shell.write_to_stream.connect(self.console.write)
+        self.shell.execute_finished.connect(self.console.finished_running)
+    
+        self.console.run_code.connect(self.shell.execute)
+        self.console.read_line.connect(self.shell.input_handler)
+        self.console.interrupt_shell.connect(self.shell.interrupt)
+        self.console.get_completions = self.shell.completion
+        
+    def _disconnect_shell(self):
+        disconnect_object_signals(self.console)
+        disconnect_object_signals(self.shell)
+        
+    
+    def kill_shell(self):
+        if self.shell is not None:
+            self._disconnect_shell()
+            self.shell.terminate()
+            
+    def start_shell(self):
+        self.shell = self.factory.create_object(InsulatedShell)
+        self._connect_shell()
+        
+    def restart_shell(self):
+        self.kill_shell()
+        self.start_shell()
+        
+        
+    def quit(self):
+        self.kill_shell()
+        self.quit_signal.emit()        
+        
+    
+
+class Qidle(QApplication):
+             
+    def __init__(self, argv, factory = None):
+        super(QApplication, self).__init__(argv)
+        self.factory = factory
+
+        self.setStyleSheet("""
+          QPlainTextEdit { border:none; }
+        """);
+        
+        self.edit = QPlainTextEdit()
+        self.shell_widget = ShellWidget(self.factory,self.edit)
+        self.shell_widget.quit_signal.connect(self.closeAllWindows)
+        
+        self.main_win = QMainWindow()
+        self.main_win.setWindowTitle(self.main_win.tr("Q-Idle Python Shell"))
+        self.main_win.setCentralWidget(self.shell_widget.editor_widget)
+        self.main_win.resize(600,500)
+        self.main_win.show()
+        
+        self.lastWindowClosed.connect(self.shell_widget.quit)
+        self.lastWindowClosed.connect(self.factory.destroy)
+        
+        self._constructMenuBar()
+    
+    def _constructMenuBar(self):
+        self.menus = {'File':QMenu(self.main_win.tr("&File")),
+                      'Shell':QMenu(self.main_win.tr("&Shell")),
+                      'Edit':QMenu(self.main_win.tr("&Edit")),
+                      'View':QMenu(self.main_win.tr("&View")),
+                      'Settings':QMenu(self.main_win.tr("&Settings")),
+                      'Help':QMenu(self.main_win.tr("&Help")),
+                     }
+        self.open_file_action = self.menus['File'].addAction(self.main_win.tr("&Load File"))
+        self.quit_action = self.menus['File'].addAction(self.main_win.tr("&Quit"))
+        self.restart_shell_action = self.menus['Shell'].addAction(self.main_win.tr("&Restart Shell"))
+        self.increase_font = self.menus['View'].addAction(self.main_win.tr("&Increase Font Size"))
+        self.decrease_font = self.menus['View'].addAction(self.main_win.tr("&Decrease Font Size"))
+        self.menubar = QMenuBar()
+        self.main_win.setMenuBar(self.menubar)
+        self.open_file_action.triggered.connect(self.shell_widget.console_widget.load_file_dlg)
+        self.restart_shell_action.triggered.connect(self.shell_widget.restart_shell)
+        self.quit_action.triggered.connect(self.shell_widget.console_widget.quit)
+        self.increase_font.triggered.connect(self.shell_widget.console_widget.increase_font)
+        self.decrease_font.triggered.connect(self.shell_widget.console_widget.decrease_font)
+        for m in ['File','Edit','View','Shell','Settings','Help']:
+            self.menubar.addMenu(self.menus[m])
+        
+
+        
+        
+        
 
 if __name__ == "__main__":
     
@@ -22,63 +139,7 @@ if __name__ == "__main__":
     event_loop = QEventLoop()
     f = InsulatedFactory(event_loop = event_loop)
     f.start()
-    rs = f.create_object(InsulatedShell)
-    
-    app = QApplication(sys.argv)
-    app.setStyleSheet("""
-      QPlainTextEdit { border:none; }
-    """);
-    
-    main = QMainWindow()
-    menubar = QMenuBar()
-    main.setMenuBar(menubar)
-    main.setWindowTitle(main.tr("Q-Idle Python Shell"))
-    menus = {'File':QMenu(main.tr("&File")),
-             'Shell':QMenu(main.tr("&Shell")),
-             'Edit':QMenu(main.tr("&Edit")),
-             'View':QMenu(main.tr("&View")),
-             'Settings':QMenu(main.tr("&Settings")),
-             'Help':QMenu(main.tr("&Help")),
-             }
-    
-    open_file_action = menus['File'].addAction(main.tr("&Load File"))
-    quit_action = menus['File'].addAction(main.tr("&Quit"))
-    restart_shell_action = menus['Shell'].addAction(main.tr("&Restart Shell"))
-    increase_font = menus['View'].addAction(main.tr("&Increase Font Size"))
-    decrease_font = menus['View'].addAction(main.tr("&Decrease Font Size"))
-    for m in ['File','Edit','View','Shell','Settings','Help']:
-        menubar.addMenu(menus[m])
-    
-    edit = QPlainTextEdit()
-    ubuntuMono = QFont("Ubuntu Mono",10)
-    edit.setFont(ubuntuMono)
-    console = Console(edit)
-    edit.keyPressEvent = console.keyPressEvent
-    edit.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-    rs.waiting_for_input.connect(console.do_readline)
-    rs.write_to_stream.connect(console.write)
-    rs.execute_finished.connect(console.finished_running)
-    
-    console.run_code.connect(rs.execute)
-    console.read_line.connect(rs.input_handler)
-    console.interrupt_shell.connect(rs.interrupt)
-    console.get_completions = rs.completion
-    main.setCentralWidget(edit)
-    console.quit.connect(rs.terminate)
-    console.quit.connect(app.closeAllWindows)
-    
-    open_file_action.triggered.connect(console.load_file_dlg)
-    restart_shell_action.triggered.connect(rs.interrupt)
-    quit_action.triggered.connect(console.quit)
-    increase_font.triggered.connect(console.increase_font)
-    decrease_font.triggered.connect(console.decrease_font)
-    
-    app.lastWindowClosed.connect(rs.terminate)
-    app.lastWindowClosed.connect(f.destroy)
-    main.resize(600,500)
-    #edit.show()
-    main.show()
+    app = Qidle(sys.argv, f)
     f.start_event_loop()
     app.exec_()
 

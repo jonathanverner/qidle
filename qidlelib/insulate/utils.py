@@ -49,6 +49,13 @@ class rpc(object):
     def __str__(self):
         return "Type:" + str(self.rpc_type) + "; Priority:" + str(self.priority) + "; Name:" + str(self.message_name)+";"
     
+
+def disconnect_object_signals(object):
+    signals = [ object.__dict__[name] for name in object.__dict__ if type(object.__dict__[name]) == signal ]
+    for s in signals:
+        s.disconnect_all()
+    
+    
 class signal(object):
     def __init__(self, *args, **kwargs):
         self.callbacks = []
