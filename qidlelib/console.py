@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt4 import QtCore
 from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir, QTimer, QByteArray, QVariant
-from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont, QImage, QTextDocument
+from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont, QImage, QTextDocument, QMenu
 
 from idlelib.PyParse import Parser as PyParser
 from insulate.utils import signal
@@ -166,6 +166,8 @@ class Console(QObject):
         # The source file's we are watching
         self.watcher = QFileSystemWatcher()
         self.watcher.fileChanged.connect(self._sourceChanged)
+        self._watched_files_menu = QMenu(self.widget.tr("&Watched Files"))
+        self._watched_files_actions = {}
         
         self._widgetKeyPressEvent = self.widget.keyPressEvent
         self.widget.keyPressEvent = self.keyPressEvent
@@ -194,6 +196,9 @@ class Console(QObject):
         
         
 
+    @property
+    def watched_files_menu(self):
+        return self._watched_files_menu
         
     
     @property
@@ -265,8 +270,8 @@ class Console(QObject):
     @pyqtSlot()
     def load_file_dlg(self):
         fname = QFileDialog.getOpenFileName(self.widget, "Watch a Python Source File", QDir.currentPath(), "Python Source Files (*.py)")
-        self.watcher.addPath(fname)
-        self.watcher.fileChanged.emit(fname)
+        self._watch_file(fname)
+        
     def _last_but_space(self):
         """ Returns true if all of the blocks following the block where the current
             cursor is located only contain spaces """
@@ -558,10 +563,7 @@ class Console(QObject):
             if fname in self.watcher.files():
                 logger.debug(msg("already watching file", fname))
             else:
-                logger.debug(msg("adding new file", fname))
-                self.watcher.addPath(file_url.toLocalFile())
-                logger.debug(msg("emmiting file changed signal"))
-                self.watcher.fileChanged.emit(fname)
+                self._watch_file(file_url.toLocalFile())
     
     @pyqtSlot(str)    
     def _sourceChanged(self, fname):
@@ -576,3 +578,21 @@ class Console(QObject):
             os.chdir(os.path.dirname(unicode(fname)))
         else: 
             logger.debug(msg("Ignoring change, because not in CODE EDITING MODE", fname))
+    
+    def _watch_file(self, path):
+        logger.debug(msg("watching a new file", path))
+        self.watcher.addPath(path)
+        self._watched_files_actions[path]  = self._watched_files_menu.addAction(path)
+        self._watched_files_actions[path].triggered.connect(lambda: self._unwatch_file(path))
+        logger.debug(msg("emmiting file changed signal"))
+        self.watcher.fileChanged.emit(path)
+    
+    def _unwatch_file(self, path):
+        self.watcher.removePath(path)
+        self._watched_files_menu.removeAction(self._watched_files_actions[path])
+        del self._watched_files_actions[path]
+        
+        
+        
+        
+        

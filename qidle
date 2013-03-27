@@ -45,6 +45,7 @@ class Qidle(QApplication):
                       'Shell':QMenu(self.main_win.tr("&Shell")),
                       'Edit':QMenu(self.main_win.tr("&Edit")),
                       'View':QMenu(self.main_win.tr("&View")),
+                      'Watch':self.shell_widget.console_widget.watched_files_menu,
                       'Settings':QMenu(self.main_win.tr("&Settings")),
                       'Help':QMenu(self.main_win.tr("&Help")),
                      }
@@ -60,7 +61,7 @@ class Qidle(QApplication):
         self.quit_action.triggered.connect(self.shell_widget.console_widget.quit)
         self.increase_font.triggered.connect(self.shell_widget.console_widget.increase_font)
         self.decrease_font.triggered.connect(self.shell_widget.console_widget.decrease_font)
-        for m in ['File','Edit','View','Shell','Settings','Help']:
+        for m in ['File','Edit','View','Shell','Watch','Settings','Help']:
             self.menubar.addMenu(self.menus[m])
 
 if __name__ == "__main__":
