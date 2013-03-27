@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt4 import QtCore
 from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir, QTimer, QByteArray, QVariant
-from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont, QImage, QTextDocument, QMenu
+from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont, QImage, QTextDocument, QMenu, QIcon
 
 from idlelib.PyParse import Parser as PyParser
 from insulate.utils import signal
@@ -582,7 +582,7 @@ class Console(QObject):
     def _watch_file(self, path):
         logger.debug(msg("watching a new file", path))
         self.watcher.addPath(path)
-        self._watched_files_actions[path]  = self._watched_files_menu.addAction(path)
+        self._watched_files_actions[path]  = self._watched_files_menu.addAction(QIcon.fromTheme("edit-delete"), path)
         self._watched_files_actions[path].triggered.connect(lambda: self._unwatch_file(path))
         logger.debug(msg("emmiting file changed signal"))
         self.watcher.fileChanged.emit(path)
