@@ -321,10 +321,14 @@ class TextBlock(object):
         else:
             spos = self.decoration_len
         if self.containsCursor(cursor,in_active_area):
-            epos = self.cursor.positionInBlock()
+            epos = cursor.positionInBlock()
         else:
             epos = -1
         return unicode(self.block.text())[spos:epos]
+    
+    def contentFromCursor(self, cursor):
+        spos = cursor.positionInBlock()
+        return unicode(self.block.text())[spos:]
     
     def appendText(self, text):
         c = self.endCursor()

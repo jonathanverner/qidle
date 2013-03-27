@@ -267,6 +267,22 @@ class Console(QObject):
         fname = QFileDialog.getOpenFileName(self.widget, "Watch a Python Source File", QDir.currentPath(), "Python Source Files (*.py)")
         self.watcher.addPath(fname)
         self.watcher.fileChanged.emit(fname)
+    def _last_but_space(self):
+        """ Returns true if all of the blocks following the block where the current
+            cursor is located only contain spaces """
+        c_block = self._currentBlock
+        blocks = 0
+        content = c_block.contentFromCursor(self._currentCursor)
+        #content = c_block.content()
+        while not c_block.isLast():
+            if len(content.strip("\n \t")) > 0:
+                return False
+            blocks +=1
+            c_block = c_block.next()
+            content = c_block.content()
+        if len(c_block.content().strip("\n \t")) > 0 and blocks > 0:
+            return False
+        return True
         
     def _wantToSubmit(self):
         if self.parser.get_continuation_type():
@@ -308,9 +324,10 @@ class Console(QObject):
         # Editing code 
         elif self.mode == Console.MODE_CODE_EDITING:
             # decide whether to run the code
-            if self._lastBlock.containsCursor(self._currentCursor):
+            #if self._lastBlock.containsCursor(self._currentCursor):
+            if self._last_but_space():
                 logger.debug(msg("Deciding whether to run code..."))
-                code = "\n".join(map(lambda x:x.content(),self._currentBlock.relatedCodeBlocks()))
+                code = ("\n".join(map(lambda x:x.content(),self._currentBlock.relatedCodeBlocks()))).rstrip(" \n\t")
                 self.parser.set_str(code+"\n")
                 if self._wantToSubmit():
                     self._mode = Console.MODE_RUNNING
