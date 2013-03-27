@@ -64,7 +64,7 @@ class local_proxy(object):
         self.pipe.send(command)
         time_start = time()
         while not async:
-            ret = self._process_command(block = True, return_response_to = command.message_id)
+            ret = self._process_command(block = False, return_response_to = command.message_id)
             if ret is not None:
                 return ret
             if timeout is not None and time()-time_start > timeout:

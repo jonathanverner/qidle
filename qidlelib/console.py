@@ -498,7 +498,10 @@ class Console(QObject):
                     # Otherwise we do normal code completion
                     else:
                         logger.debug(msg("Getting code completions for ", completion_prefix, "..."))
-                        completions = self.get_completions(completion_prefix, _timeout = 1, _default = [])
+                        completions = self.get_completions(completion_prefix, _timeout = 0.1, _default = None)
+                        if completions is None:
+                            logger.debug(msg("Completions timeouted ..."))
+                            return self._widgetKeyPressEvent(event)
                         logger.debug(msg("Got completions:", ','.join(completions)))
                         model = QStringListModel(completions)
                         self.completer.setModel(model)
