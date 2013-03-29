@@ -1,0 +1,75 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# <Copyright and license information goes here.>
+
+from PyQt4.QtGui import QApplication, QPlainTextEdit, QTextEdit, QMenu, QMainWindow, QMenuBar
+
+from qidlelib.qeventloop import QEventLoop
+from qidlelib.insulate.factory import InsulatedFactory
+from qidlelib.shellwidget import ShellWidget
+
+import sys
+
+import logging
+from qidlelib.insulate.debug import msg
+logger = logging.getLogger(__name__)
+
+class Qidle(QApplication):
+             
+    def __init__(self, argv, factory = None):
+        super(QApplication, self).__init__(argv)
+        self.factory = factory
+
+        self.setStyleSheet("""
+          QPlainTextEdit { border:none; }
+          QTextEdit { border:none; }
+        """);
+        
+        self.edit = QTextEdit()
+        self.shell_widget = ShellWidget(self.factory,self.edit)
+        self.shell_widget.quit_signal.connect(self.closeAllWindows)
+        
+        self.main_win = QMainWindow()
+        self.main_win.setWindowTitle(self.main_win.tr("Q-Idle Python Shell"))
+        self.main_win.setCentralWidget(self.shell_widget.editor_widget)
+        self.main_win.resize(600,500)
+        self.main_win.show()
+        
+        self.lastWindowClosed.connect(self.shell_widget.quit)
+        self.lastWindowClosed.connect(self.factory.destroy)
+        
+        self._constructMenuBar()
+    
+    def _constructMenuBar(self):
+        self.menus = {'File':QMenu(self.main_win.tr("&File")),
+                      'Shell':QMenu(self.main_win.tr("&Shell")),
+                      'Edit':QMenu(self.main_win.tr("&Edit")),
+                      'View':QMenu(self.main_win.tr("&View")),
+                      'Watch':self.shell_widget.console_widget.watched_files_menu,
+                      'Settings':QMenu(self.main_win.tr("&Settings")),
+                      'Help':QMenu(self.main_win.tr("&Help")),
+                     }
+        self.open_file_action = self.menus['File'].addAction(self.main_win.tr("&Load File"))
+        self.quit_action = self.menus['File'].addAction(self.main_win.tr("&Quit"))
+        self.restart_shell_action = self.menus['Shell'].addAction(self.main_win.tr("&Restart Shell"))
+        self.increase_font = self.menus['View'].addAction(self.main_win.tr("&Increase Font Size"))
+        self.decrease_font = self.menus['View'].addAction(self.main_win.tr("&Decrease Font Size"))
+        self.menubar = QMenuBar()
+        self.main_win.setMenuBar(self.menubar)
+        self.open_file_action.triggered.connect(self.shell_widget.console_widget.load_file_dlg)
+        self.restart_shell_action.triggered.connect(self.shell_widget.restart_shell)
+        self.quit_action.triggered.connect(self.shell_widget.console_widget.quit)
+        self.increase_font.triggered.connect(self.shell_widget.console_widget.increase_font)
+        self.decrease_font.triggered.connect(self.shell_widget.console_widget.decrease_font)
+        for m in ['File','Edit','View','Shell','Watch','Settings','Help']:
+            self.menubar.addMenu(self.menus[m])
+
+if __name__ == "__main__":
+    
+    logger.debug("Starting qidle...")
+    event_loop = QEventLoop()
+    f = InsulatedFactory(event_loop = event_loop)
+    f.start()
+    app = Qidle(sys.argv, f)
+    f.start_event_loop()
+    app.exec_()

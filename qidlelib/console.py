@@ -1,17 +1,24 @@
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
-from PyQt4 import QtCore
-from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir
-from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont
 
+from time import time
+import os
+import logging
+from insulate.debug import msg, debug
+logger = logging.getLogger(__name__)
+
+from PyQt4 import QtCore
+from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir, QTimer, QByteArray, QVariant
+from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont, QImage, QTextDocument, QMenu, QIcon
 
 from idlelib.PyParse import Parser as PyParser
+from insulate.utils import signal
 
-import os
+from textblock import TextBlock, block_type_for_stream
+from syntax import PythonHighlighter
+from imageobject import ImageObject
 
-from qidle.textblock import TextBlock, block_type_for_stream
-from qidle.syntax import PythonHighlighter
-from qidle.debug import debug
+
 
 class Console(QObject):
     
@@ -83,7 +90,7 @@ class Console(QObject):
         return b
     
     def _joinCurrentToPreviousBlock(self):
-        debug("Deleting current block")
+        logger.debug(msg("Deleting current block"))
         cur = self._currentBlock
         prev = cur.previous()
         prev.appendText(cur.content())
@@ -111,7 +118,7 @@ class Console(QObject):
             ret.append(block_content[pos])
             pos -=1
         ret.reverse()
-        debug("_guessCursorInString: ", ''.join(ret))
+        logger.debug(''.join(ret))
         return ''.join(ret)
         
         
@@ -137,10 +144,11 @@ class Console(QObject):
     MODE_READ_ONLY = 3
     MODE_WAITING_FOR_INTERRUPT = 4
     
-    run_code = pyqtSignal(unicode)
-    read_line = pyqtSignal(unicode)
-    restart_shell = pyqtSignal()
-    interrupt_shell = pyqtSignal()
+    #run_code = pyqtSignal(unicode)
+    run_code = signal(unicode)
+    read_line = signal(unicode)
+    restart_shell = signal()
+    interrupt_shell = signal()
     quit = pyqtSignal()
     
     def __init__(self, widget):
@@ -158,6 +166,8 @@ class Console(QObject):
         # The source file's we are watching
         self.watcher = QFileSystemWatcher()
         self.watcher.fileChanged.connect(self._sourceChanged)
+        self._watched_files_menu = QMenu(self.widget.tr("&Watched Files"))
+        self._watched_files_actions = {}
         
         self._widgetKeyPressEvent = self.widget.keyPressEvent
         self.widget.keyPressEvent = self.keyPressEvent
@@ -181,8 +191,14 @@ class Console(QObject):
         self._lastBlock.appendText("PyShell v 0.5: Starting ...")
         self.start_editing()
         
+        # Restart shell timer
+        self.timer = QTimer(self)
+        
         
 
+    @property
+    def watched_files_menu(self):
+        return self._watched_files_menu
         
     
     @property
@@ -202,16 +218,28 @@ class Console(QObject):
         self.widget.setFont(self.font)
     
     @pyqtSlot(unicode, unicode)
-    def write(self, string, stream="stdout"):
+    def write(self, stream, string):
         assert self.mode == Console.MODE_RUNNING or self.mode == Console.MODE_WAITING_FOR_INTERRUPT, "Cannot write to console in "+str(self.mode) +" (need to be RUNNING/INTERRUPT mode) "
-        lines = string.split('\n')
-        block_type = block_type_for_stream(stream)
-        for ln in lines[:-1]:
-            self._lastBlock.appendText(ln)
-            self._lastBlock.setType(block_type)
-            self._appendBlock(block_type)
-        self._lastBlock.appendText(lines[-1])
-        self._gotoEnd()
+        if string.startswith('<html_snippet>'):
+	    self._lastBlock.appendHtml(string.replace("<html_snippet>","").replace("</html_snippet>",""))
+	else:	  
+            lines = string.split('\n')
+            block_type = block_type_for_stream(stream)
+            for ln in lines[:-1]:
+                self._lastBlock.appendText(ln)
+                self._lastBlock.setType(block_type)
+                self._appendBlock(block_type)
+            self._lastBlock.appendText(lines[-1])
+            self._gotoEnd()
+    
+    def write_object(self, obj):
+        if type(obj) == ImageObject:
+	    img = QImage()
+	    img.loadFromData(QByteArray(obj.data))
+	    self._document.addResource(QTextDocument.ImageResource,QUrl(obj.url), QVariant(img))
+	    self.write('stdout','<html_snippet><img src="'+obj.url+'"/></html_snippet>')
+	    logger.debug(msg('stdout','<html_snippet><img src="',obj.url,'"/></html_snippet>'))
+	  
     
     @pyqtSlot()
     def do_readline(self):
@@ -222,8 +250,10 @@ class Console(QObject):
     
     @pyqtSlot()
     def shell_restarted(self):
+        logger.debug("Shell restarted!")
         self._appendBlock(TextBlock.TYPE_MESSAGE,"<span style='color:green'>"+"="*20+"</span> SHELL RESTARTED <span style='color:green'>" + "="*20 +"</span>", html=True)
         self.start_editing()
+        logger.debug("Shell restarted!")
         
     @pyqtSlot()
     def finished_running(self):
@@ -240,31 +270,47 @@ class Console(QObject):
     @pyqtSlot()
     def load_file_dlg(self):
         fname = QFileDialog.getOpenFileName(self.widget, "Watch a Python Source File", QDir.currentPath(), "Python Source Files (*.py)")
-        self.watcher.addPath(fname)
-        self.watcher.fileChanged.emit(fname)
+        self._watch_file(fname)
+        
+    def _last_but_space(self):
+        """ Returns true if all of the blocks following the block where the current
+            cursor is located only contain spaces """
+        c_block = self._currentBlock
+        blocks = 0
+        content = c_block.contentFromCursor(self._currentCursor)
+        #content = c_block.content()
+        while not c_block.isLast():
+            if len(content.strip("\n \t")) > 0:
+                return False
+            blocks +=1
+            c_block = c_block.next()
+            content = c_block.content()
+        if len(c_block.content().strip("\n \t")) > 0 and blocks > 0:
+            return False
+        return True
         
     def _wantToSubmit(self):
         if self.parser.get_continuation_type():
-            debug("_wantToSubmit: Is continuation, returning False")
+            logger.debug(msg("Is continuation, returning False"))
             return False
         if self.parser.is_block_opener():
-            debug("_wantToSubmit: Is block opener, returning False")
+            logger.debug(msg("Is block opener, returning False"))
             return False
         cur_line_content = self._currentBlock.content()
         if len(cur_line_content) == cur_line_content.count(" "):
-            debug("_wantToSubmit: empty line, returning True")
+            logger.debug(msg("empty line, returning True"))
             return True
         if len(self.parser.get_base_indent_string()) == 0:
-            debug("_wantToSubmit: Base indent string is short, returning True ")
+            logger.debug(msg("Base indent string is short, returning True "))
             return True
-        debug("_wantToSubmit: returning False")
+        logger.debug(msg("returning False"))
         return False
             
     def _process_enter(self):
-        debug("_process_enter: running...")
+        logger.debug(msg("running..."))
         # Apply History
         if not self._lastBlock.isCursorInRelatedCodeBlock(self._currentCursor) and not self._lastBlock.containsCursor(self._currentCursor):
-            debug("_process_enter: applying history...")
+            logger.debug(msg("applying history..."))
             if self._currentBlock.type in TextBlock.CODE_TYPES:
                 hist = map(lambda x:x.content(),self._currentBlock.relatedCodeBlocks())
             else:
@@ -283,9 +329,10 @@ class Console(QObject):
         # Editing code 
         elif self.mode == Console.MODE_CODE_EDITING:
             # decide whether to run the code
-            if self._lastBlock.containsCursor(self._currentCursor):
-                debug("Deciding whether to run code...")
-                code = "\n".join(map(lambda x:x.content(),self._currentBlock.relatedCodeBlocks()))
+            #if self._lastBlock.containsCursor(self._currentCursor):
+            if self._last_but_space():
+                logger.debug(msg("Deciding whether to run code..."))
+                code = ("\n".join(map(lambda x:x.content(),self._currentBlock.relatedCodeBlocks()))).rstrip(" \n\t")
                 self.parser.set_str(code+"\n")
                 if self._wantToSubmit():
                     self._mode = Console.MODE_RUNNING
@@ -318,7 +365,7 @@ class Console(QObject):
             self._mode = Console.MODE_RUNNING
             self.read_line.emit(ret)
         
-        debug("_process_enter: finished.")
+        logger.debug(msg("finished."))
         
     def _process_completion_widget(self, event):
         if self.completer.popup().isVisible():
@@ -333,19 +380,27 @@ class Console(QObject):
         self.completer.setWidget(self.widget)
         self._widgetFocusInEvent(event)
         
+    def _restart_shell_from_interrupt(self):
+        self.timer.stop()
+        if self._mode == Console.MODE_WAITING_FOR_INTERRUPT:
+            logger.debug("Restarting shell, since it did not respond to interrupt")
+            self.restart_shell.emit()
+        
     def keyPressEvent(self, event):
         
         # Ctrl-C Handling
         if event.matches(QKeySequence.Copy):
             if ( self._currentCursor.selection().isEmpty and ( self.mode == Console.MODE_RUNNING or self.mode == Console.MODE_RAW_INPUT ) ):
                 self._mode = Console.MODE_WAITING_FOR_INTERRUPT
+                self.timer.timeout.connect(self._restart_shell_from_interrupt)
+                self.timer.start(1000)
                 self.interrupt_shell.emit()
         
         # Ctrl-Q Handling
         if event.matches(QKeySequence.Quit):
             if self.allow_quit:
                 self.quit.emit()
-                #debug("Quitting ...")
+                #logger.debug(msg("Quitting ..."))
                 #self.widget.close()
                 event.ignore()
             return
@@ -452,27 +507,30 @@ class Console(QObject):
                 try:
                     # Filename completion when in string
                     if in_string_prefix is not None:
-                        debug("Filename completion")
+                        logger.debug(msg("Filename completion"))
                         model = QDirModel()
                         #model = QFileSystemModel()
-                        #debug("Current Path:", QDir.currentPath())
+                        #logger.debug(msg("Current Path:", QDir.currentPath()))
                         #model.setRootPath(QDir.currentPath())
                         if len(in_string_prefix) == 0 or not in_string_prefix[0] == os.sep:
                             in_string_prefix = unicode(QDir.currentPath()+QDir.separator()+ in_string_prefix)
-                        debug("prefix", in_string_prefix)
+                        logger.debug(msg("prefix", in_string_prefix))
                         self.completer.setModel(model)
                         self.completer.setCompletionPrefix(in_string_prefix)
                     # Otherwise we do normal code completion
                     else:
-                        debug("Getting code completions for ", completion_prefix, "...")
-                        completions = self.get_completions(completion_prefix)
-                        debug("Got completions:", ','.join(completions))
+                        logger.debug(msg("Getting code completions for ", completion_prefix, "..."))
+                        completions = self.get_completions(completion_prefix, _timeout = 0.1, _default = None)
+                        if completions is None:
+                            logger.debug(msg("Completions timeouted ..."))
+                            return self._widgetKeyPressEvent(event)
+                        logger.debug(msg("Got completions:", ','.join(completions)))
                         model = QStringListModel(completions)
                         self.completer.setModel(model)
                         self.completer.setCompletionPrefix(completion_prefix)
                     self.completer.popup().setCurrentIndex(self.completer.completionModel().index(0,0))
                 except Exception, e:
-                    debug("Exception when completing:", str(e))
+                    logger.debug(msg("Exception when completing:", str(e)))
                     if completion_prefix != self.completer.completionPrefix():
                         self.completer.setCompletionPrefix(completion_prefix)
                         self.completer.popup().setCurrentIndex(self.completer.completionModel().index(0,0))
@@ -498,28 +556,43 @@ class Console(QObject):
             
         
     def dropEvent(self, e):
-        debug("Drag drop event")
+        logger.debug(msg("Drag drop event"))
         file_url = QUrl(e.mimeData().text())
         if file_url.isValid() and file_url.isLocalFile():
             fname = file_url.toLocalFile()
             if fname in self.watcher.files():
-                debug("OldConsole.dropEvent: already watching file", fname)
+                logger.debug(msg("already watching file", fname))
             else:
-                debug("OldConsole.dropEvent: adding new file", fname)
-                self.watcher.addPath(file_url.toLocalFile())
-                debug("OldConsole.dropEvent: emmiting file changed signal")
-                self.watcher.fileChanged.emit(fname)
+                self._watch_file(file_url.toLocalFile())
     
     @pyqtSlot(str)    
     def _sourceChanged(self, fname):
-        debug("Console.sourceChanged: ", fname)
+        logger.debug(msg(fname))
         if self._mode == Console.MODE_CODE_EDITING:
             self._appendBlock(TextBlock.TYPE_MESSAGE,content="Reloading file " + os.path.basename(unicode(fname)) + " and changing dir to " + os.path.dirname(unicode(fname)))
             self._appendBlock(TextBlock.TYPE_OUTPUT_STDOUT)
             self._mode = Console.MODE_RUNNING
             self.run_code.emit(unicode("execfile('"+fname+"')\n"))
             self.run_code.emit(unicode("__shell__.os.chdir(__shell__.os.path.dirname('"+fname+"'))\n"))
-            debug("Changing to directory", os.path.dirname(unicode(fname)))
+            logger.debug(msg("Changing to directory", os.path.dirname(unicode(fname))))
             os.chdir(os.path.dirname(unicode(fname)))
         else: 
-            debug("Console.sourceChanged: ignoring change, because not in CODE EDITING MODE", fname)
+            logger.debug(msg("Ignoring change, because not in CODE EDITING MODE", fname))
+    
+    def _watch_file(self, path):
+        logger.debug(msg("watching a new file", path))
+        self.watcher.addPath(path)
+        self._watched_files_actions[path]  = self._watched_files_menu.addAction(QIcon.fromTheme("edit-delete"), path)
+        self._watched_files_actions[path].triggered.connect(lambda: self._unwatch_file(path))
+        logger.debug(msg("emmiting file changed signal"))
+        self.watcher.fileChanged.emit(path)
+    
+    def _unwatch_file(self, path):
+        self.watcher.removePath(path)
+        self._watched_files_menu.removeAction(self._watched_files_actions[path])
+        del self._watched_files_actions[path]
+        
+        
+        
+        
+        

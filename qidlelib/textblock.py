@@ -43,6 +43,7 @@ class TextBlock(object):
     TYPE_OUTPUT_MSG = 4
     TYPE_MESSAGE = 5
     TYPE_RAW_INPUT = 6
+    TYPE_OUTPUT_STDOUT_HTML = 7
     TYPE_NONE = None
     
     EDITABLE_TYPES = [ TYPE_CODE_START, TYPE_CODE_CONTINUED, TYPE_RAW_INPUT ]
@@ -320,10 +321,14 @@ class TextBlock(object):
         else:
             spos = self.decoration_len
         if self.containsCursor(cursor,in_active_area):
-            epos = self.cursor.positionInBlock()
+            epos = cursor.positionInBlock()
         else:
             epos = -1
         return unicode(self.block.text())[spos:epos]
+    
+    def contentFromCursor(self, cursor):
+        spos = cursor.positionInBlock()
+        return unicode(self.block.text())[spos:]
     
     def appendText(self, text):
         c = self.endCursor()
