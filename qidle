@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
 
-from PyQt4.QtGui import QApplication, QPlainTextEdit, QTextEdit, QMenu, QMainWindow, QMenuBar
+from PyQt4.QtGui import QApplication, QPlainTextEdit, QTextEdit, QMenu, QMainWindow, QMenuBar, QTabWidget
 
 from qidlelib.qeventloop import QEventLoop
 from qidlelib.insulate.factory import InsulatedFactory
 from qidlelib.shellwidget import ShellWidget
+from qidlelib.editorwidget import TextEditorWidget
 
 import sys
 
@@ -15,6 +16,9 @@ from qidlelib.insulate.debug import msg
 logger = logging.getLogger(__name__)
 
 class Qidle(QApplication):
+    
+    _TAB_TYPE_SHELL = 0
+    _TAB_TYPE_EDITOR  =1 
              
     def __init__(self, argv, factory = None):
         super(QApplication, self).__init__(argv)
@@ -23,15 +27,26 @@ class Qidle(QApplication):
         self.setStyleSheet("""
           QPlainTextEdit { border:none; }
           QTextEdit { border:none; }
+          QTabWidget { border:none; }
         """);
         
+
+        self.tabs = {}
+        self.next_tabid = 0
         self.edit = QTextEdit()
         self.shell_widget = ShellWidget(self.factory,self.edit)
         self.shell_widget.quit_signal.connect(self.closeAllWindows)
         
+        self.tabwidget = QTabWidget()
+        self.tabwidget.setTabsClosable(True)
+        self.tabwidget.tabCloseRequested.connect(self._close_tab)
+        self._add_tab( self.shell_widget.editor_widget, Qidle._TAB_TYPE_SHELL, data = self.shell_widget)
+        self._show_hide_tabbar()
+        
+        
         self.main_win = QMainWindow()
         self.main_win.setWindowTitle(self.main_win.tr("Q-Idle Python Shell"))
-        self.main_win.setCentralWidget(self.shell_widget.editor_widget)
+        self.main_win.setCentralWidget(self.tabwidget)
         self.main_win.resize(600,500)
         self.main_win.show()
         
@@ -49,20 +64,76 @@ class Qidle(QApplication):
                       'Settings':QMenu(self.main_win.tr("&Settings")),
                       'Help':QMenu(self.main_win.tr("&Help")),
                      }
-        self.open_file_action = self.menus['File'].addAction(self.main_win.tr("&Load File"))
+        self.new_file_action = self.menus['File'].addAction(self.main_win.tr("&New File"))
+        self.open_file_action = self.menus['File'].addAction(self.main_win.tr("&Open File"))
         self.quit_action = self.menus['File'].addAction(self.main_win.tr("&Quit"))
         self.restart_shell_action = self.menus['Shell'].addAction(self.main_win.tr("&Restart Shell"))
         self.increase_font = self.menus['View'].addAction(self.main_win.tr("&Increase Font Size"))
         self.decrease_font = self.menus['View'].addAction(self.main_win.tr("&Decrease Font Size"))
+        self.watch_file_action = self.menus['Watch'].addAction(self.main_win.tr("&Watch File"))
         self.menubar = QMenuBar()
         self.main_win.setMenuBar(self.menubar)
-        self.open_file_action.triggered.connect(self.shell_widget.console_widget.load_file_dlg)
+        self.watch_file_action.triggered.connect(self.shell_widget.console_widget.load_file_dlg)
         self.restart_shell_action.triggered.connect(self.shell_widget.restart_shell)
         self.quit_action.triggered.connect(self.shell_widget.console_widget.quit)
         self.increase_font.triggered.connect(self.shell_widget.console_widget.increase_font)
         self.decrease_font.triggered.connect(self.shell_widget.console_widget.decrease_font)
+        self.new_file_action.triggered.connect(self._newFile)
         for m in ['File','Edit','View','Shell','Watch','Settings','Help']:
             self.menubar.addMenu(self.menus[m])
+            
+    def _newFile(self):
+        code_editor = TextEditorWidget()
+        self._add_tab(code_editor.widget, Qidle._TAB_TYPE_EDITOR, data = code_editor)
+        
+    def _add_tab(self, widget, tab_type, title = None, data = None):
+        if title is None:
+            if tab_type == Qidle._TAB_TYPE_EDITOR:
+                title = "Untitled"
+            elif tab_type == Qidle._TAB_TYPE_SHELL:
+                title = "Shell"
+        new_tab = {
+            'id':self.next_tabid,
+            'widget':widget,
+            'type':tab_type,
+            'title':title,
+            'tab_index':None,
+            'data':data,
+        }
+        new_tab['tab_index'] = self.tabwidget.addTab( widget, title )
+        self._show_hide_tabbar()
+        self.tabs[self.next_tabid] = new_tab
+        self.next_tabid += 1
+        return new_tab
+        
+    def _tab_from_widget(self, widget):
+        for tab in self.tabs.values():
+            if tab['widget'] == widget:
+                return tab
+        return None
+        
+    def _close_tab(self, tab_num):
+        w = self.tabwidget.widget(tab_num)
+        tab = self._tab_from_widget(w)
+        if tab['type'] == Qidle._TAB_TYPE_EDITOR:
+            editor = tab['data']
+            logger.debug(msg("Closing editor, content == ", editor.content()))
+            self.tabwidget.removeTab(tab_num)
+            del w
+            del self.tabs[tab['id']]
+        elif tab['type'] == Qidle._TAB_TYPE_SHELL:
+            tab['data'].restart_shell()
+        self._show_hide_tabbar()
+    
+    def _show_hide_tabbar(self):
+        if self.tabwidget.count() <= 1:
+            self.tabwidget.tabBar().hide()
+        else:
+            self.tabwidget.tabBar().show()
+            
+        
+        
+        
 
 if __name__ == "__main__":
     
