@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
 
+from PyQt4.QtCore import pyqtSlot
 from PyQt4.QtGui import QApplication, QPlainTextEdit, QTextEdit, QMenu, QMainWindow, QMenuBar, QTabWidget, QKeySequence, QMessageBox
 
 from qidlelib.qeventloop import QEventLoop
 from qidlelib.insulate.factory import InsulatedFactory
 from qidlelib.shellwidget import ShellWidget
-from qidlelib.editorwidget import TextEditorWidget
+import qidlelib.editorwidget as editorwidget
 
 import sys
 
@@ -94,8 +95,16 @@ class Qidle(QApplication):
             self.menubar.addMenu(self.menus[m])
             
     def _newFile(self):
-        code_editor = TextEditorWidget()
-        self._add_tab(code_editor.widget, Qidle._TAB_TYPE_EDITOR, data = code_editor)
+        code_editor = editorwidget.get_editor_widget(self.tabwidget)
+        tab = self._add_tab(code_editor.widget, Qidle._TAB_TYPE_EDITOR, title = code_editor.name, data = code_editor)
+        code_editor.name_changed.connect_named(tab['id'], self._tab_name_changed)
+        self.tabwidget.setCurrentIndex(tab['tab_index'])
+        return tab
+    
+    @pyqtSlot()
+    def _openFile(self, fname = None):
+        tab = self._newFile()
+        tab['data'].open_file(fname)
         
     def _add_tab(self, widget, tab_type, title = None, data = None):
         if title is None:
@@ -141,9 +150,15 @@ class Qidle(QApplication):
             self.tabwidget.tabBar().hide()
         else:
             self.tabwidget.tabBar().show()
+    
+    def _show_code_editor_cfg_dialog(self):
+        editorwidget.show_config_dialog(self.main_win)
             
-        
-        
+    def _tab_name_changed(self, tab_id, tab_name):
+        logger.debug(msg("ID:", tab_id, "NAME:", tab_name))
+        self.tabs[tab_id]['title'] = tab_name
+        tab_index = self.tabs[tab_id]['tab_index']
+        self.tabwidget.setTabText(tab_index,tab_name)
         
     def about(self):
         QMessageBox.about(self.main_win, self.tr("About Q-Idle"),self.tr("""
