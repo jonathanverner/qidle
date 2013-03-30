@@ -74,9 +74,18 @@ class Qidle(QApplication):
         self.open_file_action.setShortcut(QKeySequence(self.tr("Ctrl+O")))
         self.quit_action = self.menus['File'].addAction(self.tr("&Quit"))
         self.restart_shell_action = self.menus['Shell'].addAction(self.tr("&Restart Shell"))
+        
+        self.next_tab_action = self.menus['View'].addAction(self.tr("&Next Tab"))
+        self.next_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+.")))
+        self.prev_tab_action = self.menus['View'].addAction(self.tr("&Previous Tab"))
+        self.next_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+,")))
+        self.shell_tab_action = self.menus['View'].addAction(self.tr("&Shell Tab"))
+        self.shell_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+1")))
+        
         self.increase_font = self.menus['View'].addAction(self.tr("&Increase Font Size"))
         self.decrease_font = self.menus['View'].addAction(self.tr("&Decrease Font Size"))
         self.watch_file_action = self.menus['Watch'].addAction(self.tr("&Watch File"))
+        self.config_code_editor_action = self.menus['Settings'].addAction(self.tr("&Configure Editor..."))
         self.about_action = self.menus['Help'].addAction(self.tr("&About Q-Idle"))
         self.about_qt_action = self.menus['Help'].addAction(self.tr("&About Qt"))
         self.menubar = QMenuBar()
@@ -87,6 +96,8 @@ class Qidle(QApplication):
         self.increase_font.triggered.connect(self.shell_widget.console_widget.increase_font)
         self.decrease_font.triggered.connect(self.shell_widget.console_widget.decrease_font)
         self.new_file_action.triggered.connect(self._newFile)
+        self.open_file_action.triggered.connect(self._openFile)
+        self.config_code_editor_action.triggered.connect(self._show_code_editor_cfg_dialog)
         self.about_qt_action.triggered.connect(self.aboutQt)
         self.about_action.triggered.connect(self.about)
         
