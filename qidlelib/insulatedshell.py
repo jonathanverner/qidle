@@ -49,6 +49,14 @@ class SignalStream(object):
         self.flush._raise_exception_on_emit(SignalStream.keyboard_interrupt)
         self.close._raise_exception_on_emit(SignalStream.keyboard_interrupt)
 
+
+class module_obj(object):
+    def __init__(self, data):
+        for (k, v) in data.items():
+            self.__setattr__(k, v)
+        self.__name__ = '__main__'
+
+
 class InsulatedShell(object):
     write_to_stream = signal(str, str)
     execute_finished = signal()
@@ -133,5 +141,21 @@ class InsulatedShell(object):
                 logger.debug("Too many completions, quitting ...")
                 break
         return ret
-    
-    
+
+    def save_state(self, fname):
+        mod = imp.new_module("__main__")
+        for (k, v) in self.locals.items():
+            if k != '__shell__':
+                mod.__dict__[k] = v
+        savestate.dump(fname,main_module=mod)
+        self.locals['__shell__'] = self
+
+    def load_state(self,fname):
+        try:
+            mod = module_obj({})
+            savestate.load(fname, main_module=mod)
+            self.locals = mod.__dict__
+            self.locals['__shell__'] = self
+        except Exception, e:
+            logger.debug(msg("Error loading saved state...", e))
+
