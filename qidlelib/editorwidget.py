@@ -2,7 +2,7 @@ from PyQt4.QtCore import QObject, QDir
 from PyQt4.QtGui import QPlainTextEdit, QFileDialog
 
 import logging
-from qidlelib.insulate.debug import msg
+from insulate.debug import msg
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +64,10 @@ class KateEditorWidget(QObject):
         return self.doc.documentName()
     
     @property
+    def path(self):
+        return self.doc.localFilePath()
+    
+    @property
     def widget(self):
         return self.view
     
@@ -83,6 +87,10 @@ class PlainTextEditorWidget(QObject):
     def open_file(self, fname = None):
         if fname is None:
             fname = QFileDialog.getOpenFileName(self.widget, "Open File", QDir.currentPath(), "Python Source Files (*.py)")
+    
+    @property
+    def name(self):
+        return ""
     
     @property
     def content(self):

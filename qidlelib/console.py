@@ -220,10 +220,10 @@ class Console(QObject):
     
     @pyqtSlot(unicode, unicode)
     def write(self, stream, string):
-        assert self.mode == Console.MODE_RUNNING or self.mode == Console.MODE_WAITING_FOR_INTERRUPT, "Cannot write to console in "+str(self.mode) +" (need to be RUNNING/INTERRUPT mode) "
+        assert self.mode == Console.MODE_RUNNING or self.mode == Console.MODE_WAITING_FOR_INTERRUPT, "Cannot write "+string +" to console stream "+stream+" in "+str(self.mode) +" (need to be RUNNING/INTERRUPT mode) "
         if string.startswith('<html_snippet>'):
-	    self._lastBlock.appendHtml(string.replace("<html_snippet>","").replace("</html_snippet>",""))
-	else:	  
+            self._lastBlock.appendHtml(string.replace("<html_snippet>","").replace("</html_snippet>",""))
+        else:
             lines = string.split('\n')
             block_type = block_type_for_stream(stream)
             for ln in lines[:-1]:
@@ -235,12 +235,11 @@ class Console(QObject):
     
     def write_object(self, obj):
         if type(obj) == ImageObject:
-	    img = QImage()
-	    img.loadFromData(QByteArray(obj.data))
-	    self._document.addResource(QTextDocument.ImageResource,QUrl(obj.url), QVariant(img))
-	    self.write('stdout','<html_snippet><img src="'+obj.url+'"/></html_snippet>')
-	    logger.debug(msg('stdout','<html_snippet><img src="',obj.url,'"/></html_snippet>'))
-	  
+            img = QImage()
+            img.loadFromData(QByteArray(obj.data))
+            self._document.addResource(QTextDocument.ImageResource,QUrl(obj.url), QVariant(img))
+            self.write('stdout','<html_snippet><img src="'+obj.url+'"/></html_snippet>')
+            logger.debug(msg('stdout','<html_snippet><img src="',obj.url,'"/></html_snippet>'))
     
     @pyqtSlot()
     def do_readline(self):
@@ -576,18 +575,22 @@ class Console(QObject):
             logger.debug(msg("Ignoring change, because not in CODE EDITING MODE", fname))
     
     def watch_file(self, path):
-        logger.debug(msg("watching a new file", path))
-        self.watcher.addPath(path)
-        self._watched_files_actions[path]  = self._watched_files_menu.addAction(QIcon.fromTheme("edit-delete"), path)
-        self._watched_files_actions[path].triggered.connect(lambda: self._unwatch_file(path))
-        logger.debug(msg("emmiting file changed signal"))
-        self.watcher.fileChanged.emit(path)
-        self.file_watched.emit(path)
+        logger.debug(msg("Trying to watch file", path))
+        if path not in self._watched_files_actions:
+            logger.debug(msg("watching a new file", path))
+            self.watcher.addPath(path)
+            self._watched_files_actions[path] = self._watched_files_menu.addAction(QIcon.fromTheme("edit-delete"), path)
+            self._watched_files_actions[path].triggered.connect(lambda: self.unwatch_file(path))
+            logger.debug(msg("emmiting file changed signal"))
+            self.watcher.fileChanged.emit(path)
+            self.file_watched.emit(path)
     
-    def _unwatch_file(self, path):
-        self.watcher.removePath(path)
-        self._watched_files_menu.removeAction(self._watched_files_actions[path])
-        del self._watched_files_actions[path]
+    def unwatch_file(self, path):
+        logger.debug(msg("un-watching a file:", path))
+        if path in self._watched_files_actions:
+            self.watcher.removePath(path)
+            self._watched_files_menu.removeAction(self._watched_files_actions[path])
+            del self._watched_files_actions[path]
         
         
         
