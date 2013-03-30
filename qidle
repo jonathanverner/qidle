@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # <Copyright and license information goes here.>
 
-from PyQt4.QtGui import QApplication, QPlainTextEdit, QTextEdit, QMenu, QMainWindow, QMenuBar, QTabWidget
+from PyQt4.QtGui import QApplication, QPlainTextEdit, QTextEdit, QMenu, QMainWindow, QMenuBar, QTabWidget, QKeySequence, QMessageBox
 
 from qidlelib.qeventloop import QEventLoop
 from qidlelib.insulate.factory import InsulatedFactory
@@ -68,7 +68,9 @@ class Qidle(QApplication):
                       'Help':QMenu(self.tr("&Help")),
                      }
         self.new_file_action = self.menus['File'].addAction(self.tr("&New File"))
+        self.new_file_action.setShortcut(QKeySequence(self.tr("Ctrl+N")))
         self.open_file_action = self.menus['File'].addAction(self.tr("&Open File..."))
+        self.open_file_action.setShortcut(QKeySequence(self.tr("Ctrl+O")))
         self.quit_action = self.menus['File'].addAction(self.tr("&Quit"))
         self.restart_shell_action = self.menus['Shell'].addAction(self.tr("&Restart Shell"))
         self.increase_font = self.menus['View'].addAction(self.tr("&Increase Font Size"))
