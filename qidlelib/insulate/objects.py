@@ -9,20 +9,24 @@ logger = logging.getLogger(__name__)
 
 
 class local_proxy(object):
-    def _create_method(self, name ):
+    def _create_method(self, name):
         def method(*args, **kwargs):
             return self._dispatch_method(name, *args, **kwargs)
         return method
 
-    def __init__(self, pipe, object_class, factory, id, _event_loop=None ):
+    def __init__(self, pipe, object_class, factory, id, _event_loop=None):
         self.factory = factory
         self.factory_id = id
         self.pipe = pipe
         self.object_class = object_class
-        signal_names = [name for name in dir(self.object_class) if name in self.object_class.__dict__ and type(self.object_class.__dict__[name]) == signal]
+        signal_names = [name for name in dir(self.object_class) if
+                        name in self.object_class.__dict__ and
+                        type(self.object_class.__dict__[name]) == signal]
         instance_method_type = type(self.__init__)
-        function_type = type(lambda x: x)
-        method_names = [name for name in dir(self.object_class) if name in self.object_class.__dict__ and type(self.object_class.__dict__[name]) == function_type ]
+        function_tp = type(lambda x: x)
+        method_names = [name for name in dir(self.object_class) if
+                        name in self.object_class.__dict__ and
+                        type(self.object_class.__dict__[name]) == function_tp]
         for name in signal_names:
             self.__setattr__(name, signal())
         for name in method_names:
@@ -74,7 +78,7 @@ class local_proxy(object):
             if timeout is not None and time() - time_start > timeout:
                 return default_ret
             if time() % 10 == 0:
-                logger.gebug(self, "Time:", time())
+                logger.debug(self, "Time:", time())
 
     def _process_command(self, block=False, return_response_to=None):
         if not block and not self.pipe.poll():
@@ -83,6 +87,7 @@ class local_proxy(object):
             command = self.pipe.recv()
         except Exception, e:
             logger.error(msg("Error when receiving command:", e))
+            logger.debug(msg("Error when receiving command:", e))
             return None
         if command.rpc_type == rpc.OBJECT_MESSAGE:
             signal = self.__getattribute__(command.message_name)
@@ -101,7 +106,7 @@ class local_proxy(object):
                     raise Exception("Error in remote call: " + command.error_description)
 
     def event_loop_hook(self):
-        self._process_command(block = False)
+        self._process_command(block=False)
 
     def terminate(self):
         self.event_loop.unregister_hook(self.event_loop_hook)
@@ -127,13 +132,13 @@ class remote_object(Process):
             sign.connect_named(name, self._signal_handler)
 
     def _signal_handler(self, signal_name, *args, **kwargs):
-        command = rpc( signal_name, *args, **kwargs )
+        command = rpc(signal_name, *args, **kwargs)
         self.pipe.send(command)
 
     def _get_method(self, method_name):
         return self.object.__getattribute__(method_name)
 
-    def _process( self, min_priority_level = None ):
+    def _process(self, min_priority_level=None):
         if len(self.command_queue) == 0:
             return
         else:
@@ -145,11 +150,11 @@ class remote_object(Process):
                 call_id = command.message_id
                 try:
                     ret = method(*command.args, **command.kwargs)
-                    response = rpc( command.message_name, ret, response_to = call_id, rpc_type = rpc.OBJECT_MESSAGE_RESPONSE )
+                    response = rpc(command.message_name, ret, response_to=call_id, rpc_type=rpc.OBJECT_MESSAGE_RESPONSE)
                     self.pipe.send(response)
                 except Exception, e:
                     logger.warn(msg("Exception while running command ", command.message_name, " exception == ", e))
-                    response = rpc( 'error', response_to = call_id, rpc_type = rpc.ERROR_MESSAGE)
+                    response = rpc('error', response_to=call_id, rpc_type=rpc.ERROR_MESSAGE)
                     response.error_typ = 'exception'
                     try:
                         response.error_description = str(e)
@@ -160,32 +165,27 @@ class remote_object(Process):
         else:
             _insert_sorted(self.command_queue, command, command.priority)
 
-    def _sendError(self, *args, **kwargs):
-        command = rpc( 'error', *args, **kwargs)
-        command.rpc_type = rpc.ERROR_MESSAGE
-        self.pipe.send(command)
-
-    def _recv_command(self,block=False):
+    def _recv_command(self, block=False):
         if not block and not self.pipe.poll():
             return
         try:
             command = self.pipe.recv()
             logger.debug(msg("Got command ", command.message_name, " priority = ", command.priority))
-            _insert_sorted(self.command_queue,command,self._compute_priority(command))
+            _insert_sorted(self.command_queue, command, self._compute_priority(command))
         except Exception, e:
             logger.error(msg("Error when receiving command:", e))
+            logger.debug(msg("Error when receiving command:", e))
 
-
-    def _single_step(self, block = False, min_priority_level=None):
-        self._recv_command( block = block )
-        self._process( min_priority_level = min_priority_level )
+    def _single_step(self, block=False, min_priority_level=None):
+        self._recv_command(block=block)
+        self._process(min_priority_level=min_priority_level)
 
     def _proc_interrupts(self):
-        self._single_step(block = False, min_priority_level=rpc.PRIORITY_INTERRUPT)
+        self._single_step(block=False, min_priority_level=rpc.PRIORITY_INTERRUPT)
 
     def _wait(self):
         logger.debug("Waiting for command ...")
-        self._single_step( block = True )
+        self._single_step(block=True)
 
     def _compute_priority(self, command):
         if '_message_priority' in dir(self.object) and command.rpc_type == rpc.OBJECT_MESSAGE:
