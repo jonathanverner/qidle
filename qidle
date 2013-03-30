@@ -76,6 +76,8 @@ class Qidle(QApplication):
         self.increase_font = self.menus['View'].addAction(self.tr("&Increase Font Size"))
         self.decrease_font = self.menus['View'].addAction(self.tr("&Decrease Font Size"))
         self.watch_file_action = self.menus['Watch'].addAction(self.tr("&Watch File"))
+        self.about_action = self.menus['Help'].addAction(self.tr("&About Q-Idle"))
+        self.about_qt_action = self.menus['Help'].addAction(self.tr("&About Qt"))
         self.menubar = QMenuBar()
         self.main_win.setMenuBar(self.menubar)
         self.watch_file_action.triggered.connect(self.shell_widget.console_widget.load_file_dlg)
@@ -84,6 +86,10 @@ class Qidle(QApplication):
         self.increase_font.triggered.connect(self.shell_widget.console_widget.increase_font)
         self.decrease_font.triggered.connect(self.shell_widget.console_widget.decrease_font)
         self.new_file_action.triggered.connect(self._newFile)
+        self.about_qt_action.triggered.connect(self.aboutQt)
+        self.about_action.triggered.connect(self.about)
+        
+        
         for m in ['File','Edit','View','Shell','Watch','Settings','Help']:
             self.menubar.addMenu(self.menus[m])
             
@@ -139,6 +145,13 @@ class Qidle(QApplication):
         
         
         
+    def about(self):
+        QMessageBox.about(self.main_win, self.tr("About Q-Idle"),self.tr("""
+        A simple Qt-ified version of the IDLE ide and shell for Python.<br/>
+        <br/>
+        (c) 2013 Jonathan Verner, <a href='mailto:'>jonathan.verner@matfyz.cz </a><br/> <br/>
+        Distributed under the GPL v 3.
+        """))
 
 if __name__ == "__main__":
     
