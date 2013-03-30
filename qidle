@@ -80,7 +80,7 @@ class Qidle(QApplication):
         self.about_qt_action = self.menus['Help'].addAction(self.tr("&About Qt"))
         self.menubar = QMenuBar()
         self.main_win.setMenuBar(self.menubar)
-        self.watch_file_action.triggered.connect(self.shell_widget.console_widget.load_file_dlg)
+        self.watch_file_action.triggered.connect(self.shell_widget.watch_file)
         self.restart_shell_action.triggered.connect(self.shell_widget.restart_shell)
         self.quit_action.triggered.connect(self.shell_widget.quit)
         self.increase_font.triggered.connect(self.shell_widget.console_widget.increase_font)

@@ -2,8 +2,8 @@ import logging
 from insulate.debug import msg, filt
 logger = logging.getLogger(__name__)
 
-from PyQt4.QtCore import Qt, QObject, pyqtSignal
-from PyQt4.QtGui import QPlainTextEdit, QFont
+from PyQt4.QtCore import Qt, QObject, pyqtSignal, pyqtSlot, QDir
+from PyQt4.QtGui import QPlainTextEdit, QFont, QFileDialog
 
 from console import Console
 from insulate.utils import disconnect_object_signals
@@ -73,6 +73,12 @@ class ShellWidget(QObject):
         
     def _disable_completion(self):
         self.console.completion_enabled = False
+    
+    @pyqtSlot()
+    def watch_file(self, fname = None):
+        if fname is None:
+            fname = QFileDialog.getOpenFileName(self.console.widget, "Watch a Python Source File", QDir.currentPath(), "Python Source Files (*.py)")
+        self.console.watch_file(fname)
         
     def quit(self):
         self.kill_shell()

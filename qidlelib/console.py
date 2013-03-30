@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt4 import QtCore
 from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir, QTimer, QByteArray, QVariant
-from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFileDialog, QFont, QImage, QTextDocument, QMenu, QIcon
+from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFont, QImage, QTextDocument, QMenu, QIcon
 
 from idlelib.PyParse import Parser as PyParser
 from insulate.utils import signal
@@ -266,11 +266,6 @@ class Console(QObject):
         new_code_block = self._appendBlock(TextBlock.TYPE_CODE_START)
         self._gotoEnd()
         self._mode = Console.MODE_CODE_EDITING
-        
-    @pyqtSlot()
-    def load_file_dlg(self):
-        fname = QFileDialog.getOpenFileName(self.widget, "Watch a Python Source File", QDir.currentPath(), "Python Source Files (*.py)")
-        self._watch_file(fname)
         
     def _last_but_space(self):
         """ Returns true if all of the blocks following the block where the current
@@ -563,7 +558,7 @@ class Console(QObject):
             if fname in self.watcher.files():
                 logger.debug(msg("already watching file", fname))
             else:
-                self._watch_file(file_url.toLocalFile())
+                self.watch_file(file_url.toLocalFile())
     
     @pyqtSlot(str)    
     def _sourceChanged(self, fname):
@@ -579,7 +574,7 @@ class Console(QObject):
         else: 
             logger.debug(msg("Ignoring change, because not in CODE EDITING MODE", fname))
     
-    def _watch_file(self, path):
+    def watch_file(self, path):
         logger.debug(msg("watching a new file", path))
         self.watcher.addPath(path)
         self._watched_files_actions[path]  = self._watched_files_menu.addAction(QIcon.fromTheme("edit-delete"), path)
