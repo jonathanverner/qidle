@@ -25,9 +25,10 @@ class configuration(object):
 
     def save(self, fpath=expanduser("~/.qidlerc")):
         f = codecs.EncodedFile(open(fpath, 'w'), 'utf-8')
-        json.dump(self.__dict__, f, indent=4, encoding='utf-8', ensure_ascii=False)
+        json.dump(self.__dict__, f, indent=4,
+                  encoding='utf-8', ensure_ascii=False)
         f.close()
-    
+
     def load(self, fpath=expanduser("~/.qidlerc")):
         try:
             f = codecs.EncodedFile(open(fpath, 'r'), 'utf-8')
@@ -35,7 +36,7 @@ class configuration(object):
             return True
         except:
             return False
-        
+
 
 config = configuration()
 config.load()

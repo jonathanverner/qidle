@@ -91,4 +91,3 @@ class ShellWidget(QObject):
     def quit(self):
         self.kill_shell()
         self.quit_signal.emit()
-

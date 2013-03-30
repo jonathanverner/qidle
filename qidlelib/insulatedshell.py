@@ -45,17 +45,10 @@ class SignalStream(object):
     def interrupt(self):
         self.keyboard_interrupt.restart()
         self.write._raise_exception_on_emit(SignalStream.keyboard_interrupt)
-        self.waiting_for_input._raise_exception_on_emit(SignalStream.keyboard_interrupt)
+        self.waiting_for_input._raise_exception_on_emit(
+            SignalStream.keyboard_interrupt)
         self.flush._raise_exception_on_emit(SignalStream.keyboard_interrupt)
         self.close._raise_exception_on_emit(SignalStream.keyboard_interrupt)
-
-
-class module_obj(object):
-    def __init__(self, data):
-        for (k, v) in data.items():
-            self.__setattr__(k, v)
-        self.__name__ = '__main__'
-
 
 class InsulatedShell(object):
     write_to_stream = signal(str, str)
@@ -132,11 +125,11 @@ class InsulatedShell(object):
     def completion(self, prefix):
         ret = []
         i = 0
-        cmpl = self.completer.complete(unicode(prefix),i)
+        cmpl = self.completer.complete(unicode(prefix), i)
         while cmpl is not None:
             ret.append(cmpl)
             i += 1
-            cmpl = self.completer.complete(unicode(prefix),i)
+            cmpl = self.completer.complete(unicode(prefix), i)
             if i > 50:
                 logger.debug("Too many completions, quitting ...")
                 break
@@ -152,7 +145,6 @@ class InsulatedShell(object):
 
     def load_state(self,fname):
         try:
-            mod = module_obj({})
             savestate.load(fname, main_module=mod)
             self.locals = mod.__dict__
             self.locals['__shell__'] = self
