@@ -54,23 +54,26 @@ class Qidle(QApplication):
         self.lastWindowClosed.connect(self.factory.destroy)
         
         self._constructMenuBar()
+        
+    def tr(self, string):
+        return self.main_win.tr(string)
     
     def _constructMenuBar(self):
-        self.menus = {'File':QMenu(self.main_win.tr("&File")),
-                      'Shell':QMenu(self.main_win.tr("&Shell")),
-                      'Edit':QMenu(self.main_win.tr("&Edit")),
-                      'View':QMenu(self.main_win.tr("&View")),
+        self.menus = {'File':QMenu(self.tr("&File")),
+                      'Shell':QMenu(self.tr("&Shell")),
+                      'Edit':QMenu(self.tr("&Edit")),
+                      'View':QMenu(self.tr("&View")),
                       'Watch':self.shell_widget.console_widget.watched_files_menu,
-                      'Settings':QMenu(self.main_win.tr("&Settings")),
-                      'Help':QMenu(self.main_win.tr("&Help")),
+                      'Settings':QMenu(self.tr("&Settings")),
+                      'Help':QMenu(self.tr("&Help")),
                      }
-        self.new_file_action = self.menus['File'].addAction(self.main_win.tr("&New File"))
-        self.open_file_action = self.menus['File'].addAction(self.main_win.tr("&Open File"))
-        self.quit_action = self.menus['File'].addAction(self.main_win.tr("&Quit"))
-        self.restart_shell_action = self.menus['Shell'].addAction(self.main_win.tr("&Restart Shell"))
-        self.increase_font = self.menus['View'].addAction(self.main_win.tr("&Increase Font Size"))
-        self.decrease_font = self.menus['View'].addAction(self.main_win.tr("&Decrease Font Size"))
-        self.watch_file_action = self.menus['Watch'].addAction(self.main_win.tr("&Watch File"))
+        self.new_file_action = self.menus['File'].addAction(self.tr("&New File"))
+        self.open_file_action = self.menus['File'].addAction(self.tr("&Open File..."))
+        self.quit_action = self.menus['File'].addAction(self.tr("&Quit"))
+        self.restart_shell_action = self.menus['Shell'].addAction(self.tr("&Restart Shell"))
+        self.increase_font = self.menus['View'].addAction(self.tr("&Increase Font Size"))
+        self.decrease_font = self.menus['View'].addAction(self.tr("&Decrease Font Size"))
+        self.watch_file_action = self.menus['Watch'].addAction(self.tr("&Watch File"))
         self.menubar = QMenuBar()
         self.main_win.setMenuBar(self.menubar)
         self.watch_file_action.triggered.connect(self.shell_widget.console_widget.load_file_dlg)
