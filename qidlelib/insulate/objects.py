@@ -58,17 +58,22 @@ class local_proxy(object):
                 default_ret = None
         else:
             timeout = None
+        logger.debug(msg("Timeout == ", timeout))
         command = rpc( method_name, *args, **kwargs )
         command.priority = p
         logger.debug(msg("Dispatching rpc for ", method_name))
         self.pipe.send(command)
         time_start = time()
+        if timeout is not None:
+            logger.debug(msg("Time start == ", time_start))
         while not async:
             ret = self._process_command(block = False, return_response_to = command.message_id)
             if ret is not None:
                 return ret
             if timeout is not None and time()-time_start > timeout:
                 return default_ret
+            if time() % 10 == 0:
+                logger.gebug(self,"Time:", time())
     
     def _process_command(self, block = False, return_response_to = None):
         if not block and not self.pipe.poll():
@@ -83,6 +88,12 @@ class local_proxy(object):
             else:
                 signal = self.__getattribute__(command.message_name+'_result')
                 signal.emit( command.response_data )
+        elif command.rpc_type == rpc.ERROR_MESSAGE:
+            if return_response_to == command.response_to:
+                if command.error_typ == 'exception':
+                    raise command.exception
+                else:
+                    raise Exception("Error in remote call: "+ command.error_description)
                 
     def event_loop_hook(self):
         self._process_command(block = False)
@@ -133,8 +144,15 @@ class remote_object(Process):
                     response = rpc( command.message_name, ret, response_to = call_id, rpc_type = rpc.OBJECT_MESSAGE_RESPONSE )
                     self.pipe.send(response)
                 except Exception, e:
-                    logger.debug(msg("Exception while running command ", command.message_name, " exception == ", e))
-                    self._sendError(error_typ = 'exception', exception = e)
+                    logger.warn(msg("Exception while running command ", command.message_name, " exception == ", e))
+                    response = rpc( 'error', response_to = call_id, rpc_type = rpc.ERROR_MESSAGE)
+                    response.error_typ = 'exception'
+                    try:
+                        response.error_description = str(e)
+                    except:
+                        pass
+                    response.exception = e
+                    self.pipe.send(response)
         else:
             _insert_sorted(self.command_queue, command, command.priority)
     
