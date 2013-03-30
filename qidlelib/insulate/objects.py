@@ -1,6 +1,6 @@
 from time import time
 from multiprocessing.process import Process
-from utils import rpc, signal, _insert_sorted
+from utils import rpc, signal, _insert_sorted, disconnect_object_signals
 from eventloop import ThreadedEventLoop
 
 import logging
@@ -74,7 +74,7 @@ class local_proxy(object):
             if timeout is not None and time() - time_start > timeout:
                 return default_ret
             if time() % 10 == 0:
-                logger.gebug(self, "Time:", time())
+                logger.debug(msg(self, "Time:", time()))
 
     def _process_command(self, block=False, return_response_to=None):
         if not block and not self.pipe.poll():
@@ -106,6 +106,7 @@ class local_proxy(object):
     def terminate(self):
         self.event_loop.unregister_hook(self.event_loop_hook)
         self.factory._terminate_object(self.factory_id)
+        disconnect_object_signals(self)
 
     def __del__(self):
         self.terminate()
@@ -158,7 +159,9 @@ class remote_object(Process):
                     response.exception = e
                     self.pipe.send(response)
         else:
+            logger.debug(msg("Saving command ", command.message_name, " priority = ", command.priority))
             _insert_sorted(self.command_queue, command, command.priority)
+            logger.debug(msg("Saved command ", command.message_name, " priority = ", command.priority))
 
     def _sendError(self, *args, **kwargs):
         command = rpc( 'error', *args, **kwargs)
@@ -169,9 +172,11 @@ class remote_object(Process):
         if not block and not self.pipe.poll():
             return
         try:
+            logger.debug(msg("Receiving from pipe"))
             command = self.pipe.recv()
             logger.debug(msg("Got command ", command.message_name, " priority = ", command.priority))
-            _insert_sorted(self.command_queue,command,self._compute_priority(command))
+            _insert_sorted(self.command_queue, command, self._compute_priority(command))
+            logger.debug(msg("Saved command ", command.message_name, " priority = ", command.priority))
         except Exception, e:
             logger.error(msg("Error when receiving command:", e))
 
@@ -199,9 +204,16 @@ class remote_object(Process):
         self.object._wait = self._wait
         self.object.isolated_init()
         self._connect_all()
-        self.event_loop = ThreadedEventLoop()
-        self.event_loop.register_hook(self._single_step)
-        self.event_loop.start()
+        #self.event_loop = ThreadedEventLoop()
+        #self.event_loop.register_hook(self._single_step)
+        #self.event_loop.start()
+
+        # Print the stacktrace when we receive the SIGUSR1 signal
+        #import signal
+        #import traceback
+        #import sys
+        #signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack, file=sys.__stderr__))
+
         while True:
             logger.debug(msg("remote_object.run: waiting for command ..."))
             self._single_step(block=True)
