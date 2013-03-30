@@ -150,6 +150,7 @@ class Console(QObject):
     restart_shell = signal()
     interrupt_shell = signal()
     quit = pyqtSignal()
+    file_watched = signal(unicode)
     
     def __init__(self, widget):
         super(Console,self).__init__()
@@ -581,6 +582,7 @@ class Console(QObject):
         self._watched_files_actions[path].triggered.connect(lambda: self._unwatch_file(path))
         logger.debug(msg("emmiting file changed signal"))
         self.watcher.fileChanged.emit(path)
+        self.file_watched.emit(path)
     
     def _unwatch_file(self, path):
         self.watcher.removePath(path)

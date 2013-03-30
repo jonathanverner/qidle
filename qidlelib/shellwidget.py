@@ -6,11 +6,12 @@ from PyQt4.QtCore import Qt, QObject, pyqtSignal, pyqtSlot, QDir
 from PyQt4.QtGui import QPlainTextEdit, QFont, QFileDialog
 
 from console import Console
-from insulate.utils import disconnect_object_signals
+from insulate.utils import disconnect_object_signals, signal
 from insulatedshell import InsulatedShell
 
 class ShellWidget(QObject):
     quit_signal = pyqtSignal()
+    file_watched = signal(unicode)
     
     def __init__(self, factory, editor_widget):
         super(QObject, self).__init__()
@@ -49,6 +50,7 @@ class ShellWidget(QObject):
         self.console.interrupt_shell.connect(self.shell.interrupt)
         self.console.get_completions = self.shell.completion
         self.console.restart_shell.connect(self.restart_shell)
+        self.console.file_watched.connect(self.file_watched)
         
     def _disconnect_shell(self):
         disconnect_object_signals(self.console)
