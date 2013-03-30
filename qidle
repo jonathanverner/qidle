@@ -149,7 +149,6 @@ class Qidle(QApplication):
         tab = self._tab_from_widget(w)
         if tab['type'] == Qidle._TAB_TYPE_EDITOR:
             editor = tab['data']
-            logger.debug(msg("Closing editor, content == ", editor.content()))
             self.tabwidget.removeTab(tab_num)
             del w
             del self.tabs[tab['id']]
