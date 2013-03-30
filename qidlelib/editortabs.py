@@ -17,10 +17,10 @@ class EditorTabs(QObject):
         self.tabwidget = tabwidget
         self.tabs = {}
         self.next_tab_id = 0
-        
+
     def own_tab(self, tab):
         return self._find_tab(tab) is not None
-    
+
     @pyqtSlot()
     def open_file(self, fname=None):
         ed_id = self._find_tab(fname)
@@ -29,7 +29,7 @@ class EditorTabs(QObject):
         else:
             tab_id = self.new_tab()
             self.tabs[tab_id].open_file(fname)
-            
+
     def new_tab(self):
         tab_id = self.next_tab_id
         self.next_tab_id += 1
@@ -40,7 +40,7 @@ class EditorTabs(QObject):
         self.tabwidget.setCurrentIndex(index)
         self.tab_num_changed.emit()
         return tab_id
-            
+
     def close_tab(self, tab_num):
         ed_id = self._find_tab(tab_num)
         assert ed_id is not None, "Closing tab not belonging to me"
@@ -51,10 +51,10 @@ class EditorTabs(QObject):
         del ed
         self.file_closed.emit(name)
         self.tab_num_changed.emit()
-            
+
     def show_cfg_dialog(self):
         editor.show_config_dialog(self.tabwidget)
-        
+
     def _find_tab(self, tab_ident):
         if type(tab_ident) == 'str':
             # find filename tab
@@ -67,7 +67,7 @@ class EditorTabs(QObject):
             return None
         else:
             return None
-    
+
     def _index_of(self, obj):
         if type(obj) == int:
             return self.tabwidget.indexOf(self.tabs[obj].widget)

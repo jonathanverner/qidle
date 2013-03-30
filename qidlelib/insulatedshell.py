@@ -45,9 +45,11 @@ class SignalStream(object):
     def interrupt(self):
         self.keyboard_interrupt.restart()
         self.write._raise_exception_on_emit(SignalStream.keyboard_interrupt)
-        self.waiting_for_input._raise_exception_on_emit(SignalStream.keyboard_interrupt)
+        self.waiting_for_input._raise_exception_on_emit(
+            SignalStream.keyboard_interrupt)
         self.flush._raise_exception_on_emit(SignalStream.keyboard_interrupt)
         self.close._raise_exception_on_emit(SignalStream.keyboard_interrupt)
+
 
 class InsulatedShell(object):
     write_to_stream = signal(str, str)
@@ -124,14 +126,12 @@ class InsulatedShell(object):
     def completion(self, prefix):
         ret = []
         i = 0
-        cmpl = self.completer.complete(unicode(prefix),i)
+        cmpl = self.completer.complete(unicode(prefix), i)
         while cmpl is not None:
             ret.append(cmpl)
             i += 1
-            cmpl = self.completer.complete(unicode(prefix),i)
+            cmpl = self.completer.complete(unicode(prefix), i)
             if i > 50:
                 logger.debug("Too many completions, quitting ...")
                 break
         return ret
-    
-    
