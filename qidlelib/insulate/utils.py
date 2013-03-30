@@ -7,19 +7,19 @@ def _insert_sorted( sorted_list, element, sort_key ):
     pos = len(sorted_list)-1
     while pos > 0 and sorted_list[pos-1][1] < sorted_list[pos][1]:
         sorted_list[pos-1],sorted_list[pos] = sorted_list[pos],sorted_list[pos-1]
-        
+
 class rpc(object):
     OBJECT_MESSAGE = 0
     OBJECT_MESSAGE_RESPONSE = 1
     ERROR_MESSAGE = 2
-    
+
     PRIORITY_LOW = -1
     PRIORITY_NORMAL = 0
     PRIORITY_IMPORTANT = 1
     PRIORITY_INTERRUPT = 10
-    
+
     NEXT_MESSAGE_ID = 0
-    
+
     def __init__(self, msg = None, *args, **kwargs):
         if 'rpc_type' in kwargs:
             self.rpc_type = kwargs['rpc_type']
@@ -45,30 +45,30 @@ class rpc(object):
             else:
                 logger.warn("RPC RESPONSE OBJECT WITH NO RESPONSE TO FIELD")
                 self.response_to = -1
-        
+
     def __str__(self):
         return "Type:" + str(self.rpc_type) + "; Priority:" + str(self.priority) + "; Name:" + str(self.message_name)+";"
-    
+
 
 def disconnect_object_signals(object):
     signals = [ object.__dict__[name] for name in object.__dict__ if type(object.__dict__[name]) == signal ]
     for s in signals:
         s.disconnect_all()
-    
-    
+
+
 class SingleShotException(object):
     def __init__(self, e):
         self.exception = e
         self.already_raised = False
-    
+
     def throw(self):
         if not self.already_raised:
             self.already_raised = True
             raise self.exception
-        
+
     def cancel(self):
         self.already_raised = True
-        
+
     def restart(self):
         self.already_raised = False
 
@@ -80,32 +80,32 @@ class signal(object):
         self.exception = None
         self.todo = []
         self.emitting = False
-    
+
     def _raise_exception_on_emit(self, e):
         self.exception = e
-        
+
     def connect_named(self, name, callback):
         self.todo.append(('connect_named',(name,callback)))
         if not self.emitting:
             self._process_todo()
-        
+
     def connect(self, callback):
         self.todo.append(('connect',callback))
         if not self.emitting:
             self._process_todo()
-        
+
     def disconnect(self,callback):
         logger.debug(msg("Disconnecting", callback))
         self.todo.append(('disconnect',callback))
         if not self.emitting:
             self._process_todo()
-            
+
     def disconnect_all(self):
         logger.debug("Disconnecting all")
         self.todo.append(('disconnect_all',))
         if not self.emitting:
             self._process_todo()
-            
+
     def _process_todo(self):
         while len(self.todo) > 0:
             op = self.todo.pop(0)
@@ -127,9 +127,10 @@ class signal(object):
                 self.callbacks.append(op[1])
             elif op[0] == 'connect_named':
                 self.named_callbacks.append(op[1])
-            
-        
+
+
     def emit(self, *args, **kwargs):
+        ret = True
         if self.exception is not None:
             e = self.exception
             self.exception = None
@@ -147,15 +148,18 @@ class signal(object):
                     logger.debug(msg("Running slot", c))
                     c(*args, **kwargs)
                 except Exception, e:
-                    logger.warn(msg("Exception when emitting signal", e))
+                    logger.warn(msg("Exception when emitting signal:", e))
+                    ret = False
         for (name,c) in self.named_callbacks:
             try:
                 c(name, *args, **kwargs)
             except Exception, e:
-                logger.warn(msg("Exception when emitting signal", e))
+                logger.warn(msg("Exception when emitting signal:", e))
+                ret = False
         self._process_todo()
         self.emitting = False
-    
+        return ret
+
     def __call__(self, *args, **kwargs):
         self.emit(*args, **kwargs)
 
@@ -164,7 +168,7 @@ def connect_all(obj, handler):
     signals = [ (name, obj.__getattribute__(name)) for name in dir(obj) if name in obj.__dict__ and type(obj.__dict__[name]) == signal ]
     for (name, sign) in signals:
         sign.connect_named(name, handler)
-        
+
 
 def cleanup(func):
     def decorated(self, *args, **kwargs):
@@ -176,14 +180,14 @@ def cleanup(func):
 class Tester(object):
     signal_1 = signal()
     signal_2 = signal()
-    
+
     msg = "Message"
     name_1 = "Name 1"
     name_2 = "Name 2"
-    
+
     def __init__(self):
         pass
-    
+
     def _reset(self):
         self.signal_1 = signal()
         self.signal_2 = signal()
@@ -193,27 +197,27 @@ class Tester(object):
         self.signal_1.connect(self.handler)
         self.signal_1.connect(self.signal_2)
         self.signal_2.connect_named(Tester.name_1, self.named_handler)
-        
+
     def named_handler(self, name, string):
         self.nm_handler = (self, name, string)
-    
+
     def handler(self,string):
         self.handl = string
-        
+
     def handler2(self,string):
         self.handl2 = string
-        
+
     @cleanup
     def test_basic_connection(self):
         self.signal_1.connect(self.handler)
         self.signal_1.emit(Tester.msg)
         return self.handl == Tester.msg
-    
+
     @cleanup
     def test_signal_as_function(self):
         self.signal_1(Tester.msg)
         return self.handl == Tester.msg
-    
+
     @cleanup
     def test_disconnect_all(self):
         self.signal_2.connect_named(Tester.name_2, self.named_handler)
@@ -222,17 +226,17 @@ class Tester(object):
         self.signal_1.emit(Test.msg)
         self.signal_2.emit(Test.msg)
         return self.nm_handler is None and self.handl is None
-        
+
     @cleanup
     def test_disconnect(self):
         self.signal_1.connect(self.handler2)
         self.signal_1.disconnect(self.handler)
         self.signal_1.emit(Test.msg)
         return self.handl2 is None
-        
+
     @cleanup
     def test_chains(self):
         self.signal_1.connect_named(Tester.name_2, self.signal_2)
         self.signal_1.emit(Test.msg)
-    
+
 
