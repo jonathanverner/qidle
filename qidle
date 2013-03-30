@@ -82,7 +82,7 @@ class Qidle(QApplication):
         self.main_win.setMenuBar(self.menubar)
         self.watch_file_action.triggered.connect(self.shell_widget.console_widget.load_file_dlg)
         self.restart_shell_action.triggered.connect(self.shell_widget.restart_shell)
-        self.quit_action.triggered.connect(self.shell_widget.console_widget.quit)
+        self.quit_action.triggered.connect(self.shell_widget.quit)
         self.increase_font.triggered.connect(self.shell_widget.console_widget.increase_font)
         self.decrease_font.triggered.connect(self.shell_widget.console_widget.decrease_font)
         self.new_file_action.triggered.connect(self._newFile)
