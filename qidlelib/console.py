@@ -9,14 +9,14 @@ logger = logging.getLogger(__name__)
 
 from PyQt4 import QtCore
 from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir, QTimer, QByteArray, QVariant
-from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFont, QImage, QTextDocument, QMenu, QIcon
+from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFont, QTextDocument, QMenu, QIcon
 
 from idlelib.PyParse import Parser as PyParser
 from insulate.utils import signal
 
 from textblock import TextBlock, block_type_for_stream
 from syntax import PythonHighlighter
-from imageobject import ImageObject
+from prettyprinters.printhooks import print_hooks
 
 
 class Console(QObject):
@@ -232,15 +232,8 @@ class Console(QObject):
             self._gotoEnd()
 
     def write_object(self, obj):
-        if type(obj) == ImageObject:
-            img = QImage()
-            img.loadFromData(QByteArray(obj.data))
-            self._document.addResource(
-                QTextDocument.ImageResource, QUrl(obj.url), QVariant(img))
-            self.write(
-                'stdout', '<html_snippet><img src="'+obj.url+'"/></html_snippet>')
-            logger.debug(msg(
-                'stdout', '<html_snippet><img src="', obj.url, '"/></html_snippet>'))
+        logger.debug(msg("Received object", obj, "writing it to stdout"))
+        self.write('stdout',print_hooks.html_repr(obj, self._document))
 
     @pyqtSlot()
     def do_readline(self):
@@ -255,7 +248,6 @@ class Console(QObject):
         self._appendBlock(TextBlock.TYPE_MESSAGE, "<span style='color:green'>"+"="*20 +
                           "</span> SHELL RESTARTED <span style='color:green'>" + "="*20 + "</span>", html=True)
         self.start_editing()
-        logger.debug("Shell restarted!")
 
     @pyqtSlot()
     def finished_running(self):

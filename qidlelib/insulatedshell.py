@@ -5,6 +5,7 @@ import os
 import imp
 
 from insulate.utils import signal, SingleShotException, rpc
+from prettyprinters.printhooks import print_hooks
 
 import logging
 from insulate.debug import msg, filt
@@ -61,6 +62,8 @@ class InsulatedShell(object):
         logger.debug("Shell initializing.")
         self.write_to_stream = signal(str, str)
         self.execute_finished = signal()
+        self.waiting_for_input = signal()
+        self.write_object = signal()
 
         self.locals = locals
         if not self.locals:
@@ -108,7 +111,9 @@ class InsulatedShell(object):
         logger.debug("*" * 30)
         logger.debug(code)
         logger.debug("*" * 30)
-        ret = self.interpreter.runsource(code + "\n")
+        ret = self._try_eval(code)
+        if not ret:
+            ret = self.interpreter.runsource(code + "\n")
         logger.debug(msg("Finished run, ret == ", ret))
         SignalStream.keyboard_interrupt.cancel()
         self.execute_finished.emit()
@@ -118,6 +123,30 @@ class InsulatedShell(object):
         sys.stderr.interrupt()
         sys.stdout.interrupt()
         self.msg_stream.interrupt()
+
+    def _try_eval(self, code):
+        try:
+            obj = eval(code, self.locals, self.locals)
+            if obj is None:
+                return True
+            if print_hooks.is_pretty_printable(obj):
+                logger.debug(msg("pretty printing object", obj))
+                if not self.write_object.emit(obj):
+                    #logger.debug(msg("error sending object, trying to pack it..."))
+                    #packed = print_hooks.pack_for_transport(obj)
+                    #logger.debug(msg("size of data", len(packed.buf)))
+                    sys.stdout.write(repr(obj))
+                    #if not self.write_object.emit(packed):
+                        #logger.debug(msg("error sending packed object"))
+                        #sys.stdout.write(print_hooks.html_repr(obj))
+            else:
+                logger.debug(msg("object", obj, "is not prettyprintable"))
+                sys.stdout.write(repr(obj))
+            return True
+        except Exception, e:
+            logger.debug(msg("failed with exception",e))
+            return False
+
 
     def _message_priority(self, message_name):
         if message_name == 'interrupt':
