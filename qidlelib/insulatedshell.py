@@ -161,7 +161,7 @@ class InsulatedShell(object):
             ret.append(cmpl)
             i += 1
             cmpl = self.completer.complete(unicode(prefix), i)
-            if i > 50:
+            if i > 100:
                 logger.debug("Too many completions, quitting ...")
                 break
         return ret
