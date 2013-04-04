@@ -43,6 +43,7 @@ class InsulatedFactory(Process):
 
     def run(self):
         logger.debug(msg("running."))
+        self.stop_event_loop()
         while True:
             self._process_children()
             if self.srv_command_pipe.poll():
