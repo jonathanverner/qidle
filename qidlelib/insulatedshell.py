@@ -130,15 +130,16 @@ class InsulatedShell(object):
             if obj is None:
                 return True
             if print_hooks.is_pretty_printable(obj):
-                logger.debug(msg("pretty printing object", obj))
-                if not self.write_object.emit(obj):
-                    #logger.debug(msg("error sending object, trying to pack it..."))
-                    #packed = print_hooks.pack_for_transport(obj)
-                    #logger.debug(msg("size of data", len(packed.buf)))
-                    sys.stdout.write(repr(obj))
-                    #if not self.write_object.emit(packed):
-                        #logger.debug(msg("error sending packed object"))
-                        #sys.stdout.write(print_hooks.html_repr(obj))
+                if print_hooks.needs_packing(obj):
+                    packed = print_hooks.pack_for_transport(obj)
+                    if not self.write_object.emit(packed):
+                        logger.debug(msg("error sending packed object"))
+                        sys.stdout.write(print_hooks.html_repr(obj))
+                else:
+                    if not self.write_object.emit(obj):
+                        logger.debug(msg("error sending object"))
+                        logger.debug(msg("error sending packed object"))
+                        sys.stdout.write(print_hooks.html_repr(obj))
             else:
                 logger.debug(msg("object", obj, "is not prettyprintable"))
                 sys.stdout.write(repr(obj))
