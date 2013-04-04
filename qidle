@@ -15,11 +15,12 @@ import sys
 import logging
 from qidlelib.insulate.debug import msg
 from qidlelib.config import config
+
 logger = logging.getLogger(__name__)
 
 
 class Qidle(QApplication):
-             
+
     def __init__(self, argv, factory=None):
         super(QApplication, self).__init__(argv)
         self.factory = factory
@@ -36,7 +37,7 @@ class Qidle(QApplication):
         self.shell_widget = ShellWidget(self.factory, self.edit)
         self.shell_widget.quit_signal.connect(self.closeAllWindows)
         self.shell_widget.file_watched.connect(self._file_watched)
-        
+
         self.tabwidget = QTabWidget()
         self.tabwidget.setTabsClosable(True)
         self.tabwidget.tabCloseRequested.connect(self._close_tab)
@@ -45,73 +46,73 @@ class Qidle(QApplication):
         self.editorTabs = EditorTabs(self.tabwidget)
         self.editorTabs.tab_num_changed.connect(self._show_hide_tabbar)
         self.editorTabs.file_closed.connect(self._file_closed)
-        
+
         self.main_win = QMainWindow()
         self.main_win.setWindowTitle(self.main_win.tr("Q-Idle Python Shell"))
         self.main_win.setCentralWidget(self.tabwidget)
         self.main_win.resize(600, 500)
         self.main_win.show()
-        
+
         self.lastWindowClosed.connect(self.shell_widget.quit)
         self.lastWindowClosed.connect(self.factory.destroy)
-        
+
         self._constructMenuBar()
         self._add_actions()
         self._connect_actions()
         self._set_keyboard_shortcuts()
-        
+
     def tr(self, string):
         return self.main_win.tr(string)
-    
+
     def _set_keyboard_shortcuts(self):
         self.new_file_action.setShortcut(QKeySequence(self.tr("Ctrl+N")))
         self.open_file_action.setShortcut(QKeySequence(self.tr("Ctrl+O")))
         self.next_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+.")))
         self.prev_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+,")))
         self.shell_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+1")))
-        
+
     def _connect_actions(self):
         # File
         self.new_file_action.triggered.connect(self.editorTabs.new_tab)
         self.open_file_action.triggered.connect(self.editorTabs.open_file)
         self.quit_action.triggered.connect(self.shell_widget.quit)
-        
+
         # Shell
         self.restart_shell_action.triggered.connect(self.shell_widget.restart_shell)
-        
+
         # View
         self.next_tab_action.triggered.connect(self.focus_next_tab)
         self.prev_tab_action.triggered.connect(self.focus_prev_tab)
         self.increase_font.triggered.connect(self.shell_widget.console_widget.increase_font)
         self.decrease_font.triggered.connect(self.shell_widget.console_widget.decrease_font)
-        
+
         # Watch
         self.watch_file_action.triggered.connect(self.shell_widget.watch_file)
-        
+
         # Settings
         self.config_code_editor_action.triggered.connect(self.editorTabs.show_cfg_dialog)
-        
+
         # Help
         self.about_qt_action.triggered.connect(self.aboutQt)
         self.about_action.triggered.connect(self.about)
-        
+
     def _add_actions(self):
         self.new_file_action = self.menus['File'].addAction(self.tr("&New File"))
         self.open_file_action = self.menus['File'].addAction(self.tr("&Open File..."))
         self.quit_action = self.menus['File'].addAction(self.tr("&Quit"))
-        
+
         self.restart_shell_action = self.menus['Shell'].addAction(self.tr("&Restart Shell"))
-        
+
         self.next_tab_action = self.menus['View'].addAction(self.tr("&Next Tab"))
         self.prev_tab_action = self.menus['View'].addAction(self.tr("&Previous Tab"))
         self.shell_tab_action = self.menus['View'].addAction(self.tr("&Shell Tab"))
         self.increase_font = self.menus['View'].addAction(self.tr("&Increase Font Size"))
         self.decrease_font = self.menus['View'].addAction(self.tr("&Decrease Font Size"))
-        
+
         self.watch_file_action = self.menus['Watch'].addAction(self.tr("&Watch File"))
-        
+
         self.config_code_editor_action = self.menus['Settings'].addAction(self.tr("&Configure Editor..."))
-        
+
         self.about_action = self.menus['Help'].addAction(self.tr("&About Q-Idle"))
         self.about_qt_action = self.menus['Help'].addAction(self.tr("&About Qt"))
 
@@ -124,41 +125,41 @@ class Qidle(QApplication):
                       'Settings': QMenu(self.tr("&Settings")),
                       'Help':     QMenu(self.tr("&Help")),
                      }
-        
+
         self.menubar = QMenuBar()
         self.main_win.setMenuBar(self.menubar)
-        
+
         for m in ['File', 'Edit', 'View', 'Shell', 'Watch', 'Settings', 'Help']:
             self.menubar.addMenu(self.menus[m])
-    
+
     def _file_watched(self, fname):
         try:
             if config.open_watched_files:
                 self.editorTabs.open_file(fname)
         except:
             pass
-        
+
     def _file_closed(self, fpath):
         try:
             if config.unwatch_closed_files:
                 self.shell_widget.unwatch_file(fpath)
         except:
             pass
-    
+
     def focus_next_tab(self):
         ind = self.tabwidget.currentIndex()
         if ind + 1 < self.tabwidget.count():
             self.tabwidget.setCurrentIndex(ind + 1)
         else:
             self.tabwidget.setCurrentIndex(0)
-    
+
     def focus_prev_tab(self):
         ind = self.tabwidget.currentIndex()
         if ind > 0:
             self.tabwidget.setCurrentIndex(ind - 1)
         else:
             self.tabwidget.setCurrentIndex(self.tabwidget.count() - 1)
-        
+
         self.tabwidget.setCurrentIndex(self.tabwidget.currentIndex())
 
     def _close_tab(self, tab_num):
@@ -166,13 +167,13 @@ class Qidle(QApplication):
             self.editorTabs.close_tab(tab_num)
         else:
             self.shell_widget.restart_shell()
-            
+
     def _show_hide_tabbar(self):
         if self.tabwidget.count() <= 1:
             self.tabwidget.tabBar().hide()
         else:
             self.tabwidget.tabBar().show()
-        
+
     def about(self):
         QMessageBox.about(self.main_win, self.tr("About Q-Idle"), self.tr("""
         A simple Qt-ified version of the IDLE ide and shell for Python.<br/>
@@ -182,7 +183,6 @@ class Qidle(QApplication):
         """))
 
 if __name__ == "__main__":
-    
     logger.debug("Starting qidle...")
     event_loop = QEventLoop()
     f = InsulatedFactory(event_loop=event_loop)

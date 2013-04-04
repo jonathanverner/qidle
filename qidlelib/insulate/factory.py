@@ -7,7 +7,6 @@ from utils import rpc
 from objects import local_proxy, remote_object
 from eventloop import ThreadedEventLoop
 
-
 import logging
 from debug import msg
 logger = logging.getLogger(__name__)
@@ -24,13 +23,13 @@ class InsulatedFactory(Process):
         self.children = {}
         self.client_event_loop = event_loop
         self.client_event_loop.register_hook(self.client_router.eventloop_hook)
-        
+
     def start_event_loop(self):
         self.client_event_loop.start()
-        
+
     def stop_event_loop(self):
         self.client_event_loop.stop()
-    
+
     def _process_children(self):
         for i in self.children.keys():
             if self.children[i]['pipe'].poll():
@@ -41,7 +40,7 @@ class InsulatedFactory(Process):
                 req = self.children[i]['parent_pipe'].recv()
                 self.children[i]['pipe'].send(req)
                 logger.debug(msg("Child ", i, " receiving request."))
-    
+
     def run(self):
         logger.debug(msg("running."))
         while True:
@@ -67,9 +66,9 @@ class InsulatedFactory(Process):
                         self._server_terminate_object(obj)
                     response = rpc('terminated')
                     self.srv_command_pipe.send(response)
-                
-                    
-                    
+
+
+
     def create_object(self, object_class, *args, **kwargs):
         req = rpc('create_object', *args, **kwargs)
         req.object_class = object_class
@@ -86,7 +85,7 @@ class InsulatedFactory(Process):
                 'pipe':object_pipe
             }
             return proxy_object
-    
+
     def destroy(self):
         logger.debug("Destroying factory ...")
         req = rpc('terminate')
@@ -98,8 +97,8 @@ class InsulatedFactory(Process):
         logger.debug("Terminating remote factory ...")
         self.terminate()
         logger.debug("Remote factory terminated.")
-        
-    
+
+
     def _server_terminate_object(self, object_id):
         logger.debug(msg("Terminating object ...", object_id))
         self.children[object_id]['pipe'].close()
@@ -107,7 +106,7 @@ class InsulatedFactory(Process):
         self.children[object_id]['parent_pipe'].close()
         del self.children[object_id]
         logger.debug("Object terminated")
-        
+
     def _terminate_object(self, object_id):
         if object_id in self.children:
             req = rpc('terminate_object')
@@ -116,7 +115,7 @@ class InsulatedFactory(Process):
             self.children[object_id]['pipe'].close()
             self.children[object_id]['object'] = None
             del self.children[object_id]
-        
+
     def _create_object(self, object_class, *args, **kwargs):
         local_end, child_end = Pipe()
         parent_pipe = self.server_router.create()
@@ -129,5 +128,5 @@ class InsulatedFactory(Process):
         res = self.children[parent_pipe.id]['object'].start()
         logger.debug(msg("started successfully, result == ", res))
         return parent_pipe.id
-        
-        
+
+

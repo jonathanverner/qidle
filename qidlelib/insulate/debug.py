@@ -42,7 +42,7 @@ class Filter(object):
                     return 0
         return 1
 
-enabled_mods = ['__main__', 'console', 'insulatedshell', 'printhooks', 'objects', 'namedpipes', 'factory', 'utils']
+enabled_mods = ['__main__', 'console', 'insulatedshell', 'printhooks', 'matplotlib_figure_Figure']
 disabled_funcs = ['router._send', 'router._recv', '__init__']
 filt = Filter(enabled_modules=enabled_mods, disabled_funcs=disabled_funcs)
 formatter = logging.Formatter(fmt = "%(name)s (PID %(process)d ): %(levelname)s %(filename)s:%(lineno)d:%(funcName)s: %(message)s")
