@@ -12,6 +12,7 @@ def pack_figure(fig):
     fig.set_facecolor('white')
     fig.canvas.draw()
     buf = fig.canvas.buffer_rgba(0,0)
+    #buf = fig.canvas.tostring_argb()
     l, b, w, h = fig.bbox.bounds
     return PackedQImage(buf,w,h,format=PackedQImage.FORMAT_ARGB32)
 
