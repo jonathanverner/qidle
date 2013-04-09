@@ -42,5 +42,8 @@
 
  - Fix copy/paste
 
+ - Fix showing images (for some reason, they seem to share the same data,
+   when this get's garbage collected, it eventually leads to corrupted
+   pictures and crashes)
 
 
