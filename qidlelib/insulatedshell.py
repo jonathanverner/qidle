@@ -97,6 +97,8 @@ class InsulatedShell(object):
         sys.stdin.waiting_for_input.connect(self.waiting_for_input)
         logger.debug("Shell streams connected.")
 
+        sys.displayhook = self.display_hook
+
     def isolated_init(self):
         logger.debug("Shell connecting stdin _wait.")
         try:
@@ -114,9 +116,7 @@ class InsulatedShell(object):
         logger.debug("*" * 30)
         logger.debug(code)
         logger.debug("*" * 30)
-        ret = self._try_eval(code)
-        if not ret:
-            ret = self.interpreter.runsource(code + "\n")
+        ret = self.interpreter.runsource(code + "\n")
         logger.debug(msg("Finished run, ret == ", ret))
         SignalStream.keyboard_interrupt.cancel()
         self.execute_finished.emit()
@@ -127,11 +127,11 @@ class InsulatedShell(object):
         sys.stdout.interrupt()
         self.msg_stream.interrupt()
 
-    def _try_eval(self, code):
+
+    def display_hook(self, obj):
         try:
-            obj = eval(code, self.locals, self.locals)
             if obj is None:
-                return True
+                return
             if print_hooks.is_pretty_printable(obj):
                 if print_hooks.needs_packing(obj):
                     packed = print_hooks.pack_for_transport(obj)
@@ -146,10 +146,10 @@ class InsulatedShell(object):
             else:
                 logger.debug(msg("object", obj, "is not prettyprintable"))
                 sys.stdout.write(repr(obj))
-            return True
+            return
         except Exception, e:
-            logger.debug(msg("failed with exception",e))
-            return False
+            logger.debug(msg("Exception", e, "encountered while printing object", obj))
+            sys.__displayhook__(obj)
 
 
     def _message_priority(self, message_name):
