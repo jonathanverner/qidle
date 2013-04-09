@@ -653,12 +653,12 @@ class Console(QObject):
                 # event.ignore()
                 # return
 
-        # Function call tooltips
-        self._tool_tip_event(event)
-
         # Code Completion
         if self._completion_event(event):
             return
+
+        # Function call tooltips
+        self._tool_tip_event(event)
 
         return self._widgetKeyPressEvent(event)
 
