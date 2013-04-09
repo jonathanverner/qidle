@@ -451,7 +451,8 @@ class Console(QObject):
                             unicode(completion_prefix).strip(' '), _timeout=0.1, _default=None)
                         if completions is None:
                             logger.debug(msg("Completions timeouted ..."))
-                            return self._widgetKeyPressEvent(event)
+                            self._widgetKeyPressEvent(event)
+                            return True
                         logger.debug(msg(
                             "Got completions:", ','.join(completions)))
                         model = QStringListModel(completions)
@@ -465,7 +466,8 @@ class Console(QObject):
                             completion_prefix, _timeout=0.1, _default=None)
                         if completions is None:
                             logger.debug(msg("Completions timeouted ..."))
-                            return self._widgetKeyPressEvent(event)
+                            self._widgetKeyPressEvent(event)
+                            return True
                         logger.debug(msg(
                             "Got completions:", ','.join(completions)))
                         model = QStringListModel(completions)
@@ -487,6 +489,7 @@ class Console(QObject):
                 self.completer.popup().hide()
                 self.widget.clearFocus()
                 self.widget.setFocus(Qt.ActiveWindowFocusReason)
+            return False
 
     def keyPressEvent(self, event):
 
@@ -601,12 +604,12 @@ class Console(QObject):
                 # event.ignore()
                 # return
 
-        # Code Completion
-        self._completion_event(event)
-
         # Function call tooltips
         self._tool_tip_event(event)
 
+        # Code Completion
+        if self._completion_event(event):
+            return
 
         return self._widgetKeyPressEvent(event)
 
