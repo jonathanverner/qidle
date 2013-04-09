@@ -3,8 +3,8 @@
  - Code completion enhancements:
 
    -- when an opening ( is entered, show the __doc__ of the function DONE
-   -- code completion for imports DONE
    -- when an opening [ is enetered following a dict, complete the list of keys DONE
+   -- code completion for imports PARTIALLY DONE
 
  - Implement custom context-menu + actions
 
