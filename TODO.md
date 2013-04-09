@@ -2,7 +2,7 @@
 
  - Code completion enhancements:
   
-   -- when an opening ( is entered, show the __doc__ of the function
+   -- when an opening ( is entered, show the __doc__ of the function DONE
    -- when an opening [ is enetered following a dict, complete the list of keys
    -- code completion for imports DONE
 

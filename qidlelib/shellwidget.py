@@ -49,6 +49,8 @@ class ShellWidget(QObject):
         self.console.read_line.connect(self.shell.input_handler)
         self.console.interrupt_shell.connect(self.shell.interrupt)
         self.console.get_completions = self.shell.completion
+        self.console.get_docs = self.shell.doctext
+        self.console.get_f_sign = self.shell.function_signature
         self.console.get_import_completions = self.shell.import_completion
         self.console.restart_shell.connect(self.restart_shell)
         self.console.file_watched.connect(self.file_watched)

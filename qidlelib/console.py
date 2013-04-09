@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt4 import QtCore
 from PyQt4.QtCore import Qt, QEvent, QEventLoop, pyqtSignal, pyqtSlot, QUrl, QFileSystemWatcher, QObject, QDir, QTimer, QByteArray, QVariant
-from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFont, QTextDocument, QMenu, QIcon
+from PyQt4.QtGui import QKeySequence, QKeyEvent, QCompleter, QTextCursor, QStringListModel, QFileSystemModel, QDirModel, QFont, QTextDocument, QMenu, QIcon, QToolTip
 
 from idlelib.PyParse import Parser as PyParser
 from insulate.utils import signal
@@ -388,6 +388,37 @@ class Console(QObject):
                 "Restarting shell, since it did not respond to interrupt")
             self.restart_shell.emit()
 
+    def _tool_tip_event(self, event):
+        if ( self.mode == Console.MODE_CODE_EDITING and event.text() == '(' ):
+            try:
+                doc = self.get_docs(self.wordUnderCursor(), _timeout=0.1, _default = None)
+                try:
+                    args, defaults, varargs, kwargs = self.get_f_sign(self.wordUnderCursor(), _timeout=0.1, _default = None)
+                    if defaults is not None:
+                        start = len(args)-len(defaults)
+                        for i in range(len(defaults)):
+                            args[i+start] += '=' + str(defaults[i])
+                    if varargs is not None:
+                        args.append('*'+varargs)
+                    if kwargs is not None:
+                        args.append('**'+kwargs)
+                    pos_args = ', '.join(args)
+                    sign_help = self.wordUnderCursor()+'('+pos_args+')\n\n'
+                except:
+                    sign_help = None
+                tooltip_text = ''
+                if sign_help is not None:
+                    tooltip_text = sign_help
+                if doc is not None:
+                    tooltip_text += doc
+                if len(tooltip_text) > 0:
+                    cursor_rect = self.widget.cursorRect()
+                    print cursor_rect, self.widget.pos(), self.widget.geometry()
+                    QToolTip.showText(self.widget.mapToGlobal(cursor_rect.bottomRight()),tooltip_text,self.widget)
+            except Exception, e:
+                logger.debug(msg("Exception when showing tooltip:",e))
+
+
     def _completion_event(self, event):
         if (self.completion_enabled) and ((self.mode == Console.MODE_CODE_EDITING or self.mode == Console.MODE_RAW_INPUT) and len(event.text()) != 0):
             completion_prefix = self.wordUnderCursor() + event.text()
@@ -572,6 +603,9 @@ class Console(QObject):
 
         # Code Completion
         self._completion_event(event)
+
+        # Function call tooltips
+        self._tool_tip_event(event)
 
 
         return self._widgetKeyPressEvent(event)

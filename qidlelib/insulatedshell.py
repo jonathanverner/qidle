@@ -1,5 +1,6 @@
 from code import InteractiveInterpreter
 from rlcompleter import Completer
+import inspect
 import sys
 import os
 import imp
@@ -176,3 +177,19 @@ class InsulatedShell(object):
                 ret.append(c)
         logger.debug(msg("Got",len(ret),"completions, first 10:", ','.join(ret[:10])))
         return ret
+
+
+    def doctext(self, prefix):
+        try:
+            return eval(prefix+'.__doc__',self.locals, self.locals)
+        except:
+            return None
+
+    def function_signature(self, function):
+        try:
+            f = eval(function, self.locals, self.locals)
+            asp = inspect.getargspec(f)
+            return asp.args, asp.defaults, asp.varargs, asp.keywords
+        except:
+            return None
+
