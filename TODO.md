@@ -42,6 +42,5 @@
 
  - Fix copy/paste
 
- - Fix sending objects over pipes
 
 
