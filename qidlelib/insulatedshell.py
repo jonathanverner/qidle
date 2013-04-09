@@ -178,6 +178,14 @@ class InsulatedShell(object):
         logger.debug(msg("Got",len(ret),"completions, first 10:", ','.join(ret[:10])))
         return ret
 
+    def dict_completion(self, dict_name, key):
+        logger.debug("Getting dict completions for '"+dict_name+"' with prefix '"+key+"'")
+        try:
+            return [str(x) for x in eval(dict_name+'.keys()',self.locals, self.locals) if str(x).startswith(key)]
+        except Exception, e:
+            logger.debug(msg("Exception ",e," when getting dict completions for '"+dict_name+"' with prefix '"+key+"'"))
+            return None
+
 
     def doctext(self, prefix):
         try:

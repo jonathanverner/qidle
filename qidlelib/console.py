@@ -102,6 +102,36 @@ class Console(QObject):
     def textToCursor(self):
         return self._currentBlock.contentToCursor(self._currentCursor)
 
+    def _guessDictPrefix(self, char):
+        c = self._currentCursor
+        block_content = self._currentBlock.content(include_decoration=True)
+        pos = min(c.positionInBlock(), len(block_content))
+        block_content = unicode(block_content[:pos]+char)
+
+        double_quotes = block_content.count('"')
+        single_quotes = block_content.count("'")
+
+        if double_quotes % 2 == 0 and single_quotes % 2 == 0:
+            return None
+
+        stop_chars = '"\' '
+        ret = []
+        while pos >= 0 and block_content[pos] not in stop_chars:
+            ret.append(block_content[pos])
+            pos -= 1
+        ret.reverse()
+        if pos > 0 and block_content[pos-1] == '[':
+            pos -= 1
+            dct = []
+            while pos >= 0 and block_content[pos] not in [ ' ', "\n", "\t"]:
+                dct.append(block_content[pos])
+                pos -= 1
+            dct.reverse()
+            logger.debug(msg('dct:',''.join(dct[:-1]), 'key:',''.join(ret)))
+            return ''.join(dct[:-1]), ''.join(ret)
+        else:
+            return None
+
     def _guessStringPrefix(self, char):
         c = self._currentCursor
         block_content = self._currentBlock.content(include_decoration=True)
@@ -422,8 +452,14 @@ class Console(QObject):
     def _completion_event(self, event):
         if (self.completion_enabled) and ((self.mode == Console.MODE_CODE_EDITING or self.mode == Console.MODE_RAW_INPUT) and len(event.text()) != 0):
             completion_prefix = self.wordUnderCursor() + event.text()
-            in_string_prefix = self._guessStringPrefix(event.text())
-            len_or_dot = len(completion_prefix) >= 3 or event.text() == '.' or (event.text() == ' ' and (event.modifiers() & Qt.ControlModifier))
+            try:
+                dct, key = self._guessDictPrefix(event.text())
+                need_dict_completion = True
+                in_string_prefix = None
+            except:
+                need_dict_completion = False
+                in_string_prefix = self._guessStringPrefix(event.text())
+            len_or_dot = len(completion_prefix) >= 3 or event.text() == '.' or (event.text() == ' ' and (event.modifiers() & Qt.ControlModifier)) or need_dict_completion
             if event.modifiers() & Qt.ControlModifier:
                 completion_prefix = completion_prefix[:-1]
             need_import_completion = self.textToCursor()[:-len(completion_prefix)].strip(' ') in ['from', 'import']
@@ -458,6 +494,19 @@ class Console(QObject):
                         model = QStringListModel(completions)
                         self.completer.setModel(model)
                         self.completer.setCompletionPrefix(unicode(completion_prefix).strip(' '))
+                    elif need_dict_completion:
+                        logger.debug(msg(
+                            "Getting dict completions for ", dct, "key == ", key))
+                        completions = self.get_dict_completions(dct, key, _timeout=0.01, _default=None)
+                        if completions is None:
+                            logger.debug(msg("No completions ..."))
+                            self._widgetKeyPressEvent(event)
+                            return True
+                        logger.debug(msg(
+                            "Got completions:", ','.join(completions)))
+                        model = QStringListModel(completions)
+                        self.completer.setModel(model)
+                        self.completer.setCompletionPrefix(key)
                     # Otherwise we do normal code completion
                     else:
                         logger.debug(msg(
