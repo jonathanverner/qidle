@@ -319,7 +319,7 @@ class TextBlock(object):
         return unicode(self.block.text())[spos:]
 
     def contentToCursor(self, cursor, include_decoration=False, in_active_area=False):
-        if cursor <= self.startCursor(self, in_active_area=in_active_area):
+        if cursor <= self.startCursor(in_active_area=in_active_area):
             return ""
         if in_active_area:
             spos = self.active_area_start
