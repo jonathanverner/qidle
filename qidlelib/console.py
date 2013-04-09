@@ -99,6 +99,9 @@ class Console(QObject):
         c = self._currentCursor
         return self._currentBlock.wordUnderCursor(self._currentCursor)
 
+    def textToCursor(self):
+        return self._currentBlock.contentToCursor(self._currentCursor)
+
     def _guessStringPrefix(self, char):
         c = self._currentCursor
         block_content = self._currentBlock.content(include_decoration=True)
@@ -385,6 +388,75 @@ class Console(QObject):
                 "Restarting shell, since it did not respond to interrupt")
             self.restart_shell.emit()
 
+    def _completion_event(self, event):
+        if (self.completion_enabled) and ((self.mode == Console.MODE_CODE_EDITING or self.mode == Console.MODE_RAW_INPUT) and len(event.text()) != 0):
+            completion_prefix = self.wordUnderCursor() + event.text()
+            in_string_prefix = self._guessStringPrefix(event.text())
+            len_or_dot = len(completion_prefix) >= 3 or event.text() == '.' or (event.text() == ' ' and (event.modifiers() & Qt.ControlModifier))
+            if event.modifiers() & Qt.ControlModifier:
+                completion_prefix = completion_prefix[:-1]
+            need_import_completion = self.textToCursor()[:-len(completion_prefix)].strip(' ') in ['from', 'import']
+
+            if (len_or_dot and unicode(completion_prefix[-1]) not in TextBlock.WORD_STOP_CHARS and len(event.text()) > 0) or in_string_prefix is not None:
+                try:
+                    # Filename completion when in string
+                    if in_string_prefix is not None:
+                        logger.debug(msg("Filename completion"))
+                        model = QDirModel()
+                        # model = QFileSystemModel()
+                        # logger.debug(msg("Current Path:", QDir.currentPath()))
+                        # model.setRootPath(QDir.currentPath())
+                        if len(in_string_prefix) == 0 or not in_string_prefix[0] == os.sep:
+                            in_string_prefix = unicode(
+                                QDir.currentPath()+QDir.separator() + in_string_prefix)
+                        logger.debug(msg("prefix", in_string_prefix))
+                        self.completer.setModel(model)
+                        self.completer.setCompletionPrefix(in_string_prefix)
+                    # Complete import of packages
+                    elif need_import_completion:
+                        logger.debug(msg(
+                            "Getting import completions for ", completion_prefix, "..."))
+                        completions = self.get_import_completions(
+                            unicode(completion_prefix).strip(' '), _timeout=0.1, _default=None)
+                        if completions is None:
+                            logger.debug(msg("Completions timeouted ..."))
+                            return self._widgetKeyPressEvent(event)
+                        logger.debug(msg(
+                            "Got completions:", ','.join(completions)))
+                        model = QStringListModel(completions)
+                        self.completer.setModel(model)
+                        self.completer.setCompletionPrefix(unicode(completion_prefix).strip(' '))
+                    # Otherwise we do normal code completion
+                    else:
+                        logger.debug(msg(
+                            "Getting code completions for ", completion_prefix, "..."))
+                        completions = self.get_completions(
+                            completion_prefix, _timeout=0.1, _default=None)
+                        if completions is None:
+                            logger.debug(msg("Completions timeouted ..."))
+                            return self._widgetKeyPressEvent(event)
+                        logger.debug(msg(
+                            "Got completions:", ','.join(completions)))
+                        model = QStringListModel(completions)
+                        self.completer.setModel(model)
+                        self.completer.setCompletionPrefix(completion_prefix)
+                    self.completer.popup().setCurrentIndex(
+                        self.completer.completionModel().index(0, 0))
+                except Exception, e:
+                    logger.debug(msg("Exception when completing:", str(e)))
+                    if completion_prefix != self.completer.completionPrefix():
+                        self.completer.setCompletionPrefix(completion_prefix)
+                        self.completer.popup().setCurrentIndex(
+                            self.completer.completionModel().index(0, 0))
+                cursor_rect = self.widget.cursorRect()
+                cursor_rect.setWidth(self.completer.popup().sizeHintForColumn(
+                    0) + self.completer.popup().verticalScrollBar().sizeHint().width())
+                self.completer.complete(cursor_rect)
+            else:
+                self.completer.popup().hide()
+                self.widget.clearFocus()
+                self.widget.setFocus(Qt.ActiveWindowFocusReason)
+
     def keyPressEvent(self, event):
 
         # Ctrl-C Handling
@@ -499,56 +571,8 @@ class Console(QObject):
                 # return
 
         # Code Completion
-        elif (self.completion_enabled) and ((self.mode == Console.MODE_CODE_EDITING or self.mode == Console.MODE_RAW_INPUT) and len(event.text()) != 0):
-            completion_prefix = self.wordUnderCursor() + event.text()
-            in_string_prefix = self._guessStringPrefix(event.text())
-            len_or_dot = len(completion_prefix) >= 3 or event.text() == '.'
+        self._completion_event(event)
 
-            if (len_or_dot and unicode(completion_prefix[-1]) not in TextBlock.WORD_STOP_CHARS and len(event.text()) > 0) or in_string_prefix is not None:
-                try:
-                    # Filename completion when in string
-                    if in_string_prefix is not None:
-                        logger.debug(msg("Filename completion"))
-                        model = QDirModel()
-                        # model = QFileSystemModel()
-                        # logger.debug(msg("Current Path:", QDir.currentPath()))
-                        # model.setRootPath(QDir.currentPath())
-                        if len(in_string_prefix) == 0 or not in_string_prefix[0] == os.sep:
-                            in_string_prefix = unicode(
-                                QDir.currentPath()+QDir.separator() + in_string_prefix)
-                        logger.debug(msg("prefix", in_string_prefix))
-                        self.completer.setModel(model)
-                        self.completer.setCompletionPrefix(in_string_prefix)
-                    # Otherwise we do normal code completion
-                    else:
-                        logger.debug(msg(
-                            "Getting code completions for ", completion_prefix, "..."))
-                        completions = self.get_completions(
-                            completion_prefix, _timeout=0.1, _default=None)
-                        if completions is None:
-                            logger.debug(msg("Completions timeouted ..."))
-                            return self._widgetKeyPressEvent(event)
-                        logger.debug(msg(
-                            "Got completions:", ','.join(completions)))
-                        model = QStringListModel(completions)
-                        self.completer.setModel(model)
-                        self.completer.setCompletionPrefix(completion_prefix)
-                    self.completer.popup().setCurrentIndex(
-                        self.completer.completionModel().index(0, 0))
-                except Exception, e:
-                    logger.debug(msg("Exception when completing:", str(e)))
-                    if completion_prefix != self.completer.completionPrefix():
-                        self.completer.setCompletionPrefix(completion_prefix)
-                        self.completer.popup().setCurrentIndex(
-                            self.completer.completionModel().index(0, 0))
-                cursor_rect = self.widget.cursorRect()
-                cursor_rect.setWidth(self.completer.popup().sizeHintForColumn(
-                    0) + self.completer.popup().verticalScrollBar().sizeHint().width())
-                self.completer.complete(cursor_rect)
-            else:
-                self.completer.popup().hide()
-                self.widget.clearFocus()
-                self.widget.setFocus(Qt.ActiveWindowFocusReason)
 
         return self._widgetKeyPressEvent(event)
 

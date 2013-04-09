@@ -6,6 +6,7 @@ import imp
 
 from insulate.utils import signal, SingleShotException, rpc
 from prettyprinters.printhooks import print_hooks
+from packagecomplete import find_packages
 
 import logging
 from insulate.debug import msg, filt
@@ -70,6 +71,7 @@ class InsulatedShell(object):
             self.locals = {}
         self.locals['__name__'] = filename
         self.completer = Completer(self.locals)
+        self.packages = find_packages()
         self.os = os
         self.locals['__shell__'] = self
 
@@ -164,4 +166,13 @@ class InsulatedShell(object):
             if i > 100:
                 logger.debug("Too many completions, quitting ...")
                 break
+        return ret
+
+    def import_completion(self, prefix):
+        logger.debug("Getting import completions for '"+prefix+"'")
+        ret = []
+        for c in self.packages:
+            if c.startswith(prefix):
+                ret.append(c)
+        logger.debug(msg("Got",len(ret),"completions, first 10:", ','.join(ret[:10])))
         return ret
