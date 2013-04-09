@@ -33,6 +33,8 @@ class rpc(object):
         self.message_id = rpc.NEXT_MESSAGE_ID
         rpc.NEXT_MESSAGE_ID += 1
         assert type(self.message_name) == str, "Message name must be a string"
+        if 'response_to' in kwargs:
+            self.response_to = kwargs['response_to']
         if self.rpc_type == rpc.OBJECT_MESSAGE_RESPONSE:
             if 'response_data' in kwargs:
                 self.response_data = kwargs['response_data']
@@ -40,9 +42,7 @@ class rpc(object):
                 self.response_data = args[0]
             else:
                 self.response_data = None
-            if 'response_to' in kwargs:
-                self.response_to = kwargs['response_to']
-            else:
+            if 'response_to' not in kwargs:
                 logger.warn("RPC RESPONSE OBJECT WITH NO RESPONSE TO FIELD")
                 self.response_to = -1
 
