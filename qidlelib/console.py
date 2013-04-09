@@ -3,6 +3,7 @@
 
 from time import time
 import os
+import sys
 import logging
 from insulate.debug import msg, debug
 logger = logging.getLogger(__name__)
@@ -188,6 +189,7 @@ class Console(QObject):
 
         self._lastBlock.setType(TextBlock.TYPE_MESSAGE)
         self._lastBlock.appendText("PyShell v 0.5: Starting ...")
+        self._appendBlock(TextBlock.TYPE_MESSAGE, 'Python version ' + sys.version, html=True)
         self.start_editing()
 
         # Restart shell timer
@@ -247,6 +249,7 @@ class Console(QObject):
         logger.debug("Shell restarted!")
         self._appendBlock(TextBlock.TYPE_MESSAGE, "<span style='color:green'>"+"="*20 +
                           "</span> SHELL RESTARTED <span style='color:green'>" + "="*20 + "</span>", html=True)
+        self._appendBlock(TextBlock.TYPE_MESSAGE, 'Python version ' + sys.version, html=True)
         self.start_editing()
 
     @pyqtSlot()
