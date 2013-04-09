@@ -443,7 +443,7 @@ class Console(QObject):
                     tooltip_text += doc
                 if len(tooltip_text) > 0:
                     cursor_rect = self.widget.cursorRect()
-                    print cursor_rect, self.widget.pos(), self.widget.geometry()
+                    logger.debug("Showing help: "+tooltip_text+" at "+str(self.widget.mapToGlobal(cursor_rect.bottomRight())))
                     QToolTip.showText(self.widget.mapToGlobal(cursor_rect.bottomRight()),tooltip_text,self.widget)
             except Exception, e:
                 logger.debug(msg("Exception when showing tooltip:",e))

@@ -46,6 +46,7 @@ class PackedQImage(object):
             img = self.to_QImage()
             document.addResource(
                 QTextDocument.ImageResource, QUrl(url), QVariant(img))
+            logger.debug('<img src="' + url + '"/>')
             return '<img src="' + url + '"/>'
 
 def pack_qimage(obj):
