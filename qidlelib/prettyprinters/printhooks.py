@@ -13,26 +13,42 @@ class PackedQImage(object):
     FORMAT_PNG = 0
     FORMAT_ARGB32 = 1
 
+    IMAGES={}
+
     def __init__(self, buf='', w=None, h=None, format=None):
         self.buf = b64encode(buf)
+        self.encoded = True
         self.format = format
         self.w = w
         self.h = h
+
+    def _encode(self):
+        if not self.encoded:
+            self.buf = b64encode(self.buf)
+            self.encoded = True
+
+    def _decode(self):
+        if self.encoded:
+            self.buf = b64decode(self.buf)
+            self.encoded = False
 
     def from_QImage(self, img):
         buf = QByteArray()
         bf = QBuffer(buf)
         bf.open(QIODevice.WriteOnly)
         img.save(bf, format='PNG')
-        self.buf = b64encode(buf.data())
+        self.buf = buf.data()
         self.format = PackedQImage.FORMAT_PNG
+        self._encode()
 
     def to_QImage(self):
+        self._decode()
         if self.format == PackedQImage.FORMAT_ARGB32:
-            return QImage(b64decode(self.buf), self.w, self.h, QImage.Format_ARGB32)
+            return QImage(self.buf, self.w, self.h, QImage.Format_ARGB32).copy()
         elif self.format == PackedQImage.FORMAT_PNG:
             img = QImage()
-            img.loadFromData(b64decode(self.buf), format='PNG')
+            img.loadFromData(self.buf, format='PNG')
+            return img.copy()
 
     def _get_url(self):
         url="img://packed_qimage/"+str(PackedQImage.next_id)
@@ -44,8 +60,9 @@ class PackedQImage(object):
             logger.debug("Showing packed QImage...")
             url = self._get_url()
             img = self.to_QImage()
+            PackedQImage.IMAGES[url]=(img,QVariant(img),self.buf)
             document.addResource(
-                QTextDocument.ImageResource, QUrl(url), QVariant(img))
+                QTextDocument.ImageResource, QUrl(url), PackedQImage.IMAGES[url][1])
             logger.debug('<img src="' + url + '"/>')
             return '<img src="' + url + '"/>'
 
