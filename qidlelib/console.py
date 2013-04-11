@@ -198,6 +198,7 @@ class Console(QObject):
         self.watcher.fileChanged.connect(self._sourceChanged)
         self._watched_files_menu = QMenu(self.widget.tr("&Watched Files"))
         self._watched_files_actions = {}
+        self._lost_files = []
 
         self._widgetKeyPressEvent = self.widget.keyPressEvent
         self.widget.keyPressEvent = self.keyPressEvent
@@ -695,23 +696,35 @@ class Console(QObject):
             else:
                 self.watch_file(file_url.toLocalFile())
 
+    @pyqtSlot()
+    def _reload_watch_files(self):
+        fls = self.watcher.files()
+        self.watcher.removePaths(fls)
+        self.watcher.addPaths(fls)
+        self.watcher.addPaths(self._lost_files)
+
     @pyqtSlot(str)
     def _sourceChanged(self, fname):
-        logger.debug(msg(fname))
+        fname = unicode(fname)
+        logger.debug(fname)
         if self._mode == Console.MODE_CODE_EDITING:
-            self._appendBlock(TextBlock.TYPE_MESSAGE, content="Reloading file " + os.path.basename(
-                unicode(fname)) + " and changing dir to " + os.path.dirname(unicode(fname)))
+            self._write_message("Changing dir to ", os.path.dirname(fname),
+                                " and Reloading file ", os.path.basename(fname))
             self._appendBlock(TextBlock.TYPE_OUTPUT_STDOUT)
             self._mode = Console.MODE_RUNNING
-            self.run_code.emit(unicode("execfile('"+fname+"')\n"))
             self.run_code.emit(unicode(
                 "__shell__.os.chdir(__shell__.os.path.dirname('"+fname+"'))\n"))
-            logger.debug(msg("Changing to directory", os.path.dirname(
-                unicode(fname))))
-            os.chdir(os.path.dirname(unicode(fname)))
+            self.run_code.emit(unicode("execfile('"+fname+"')\n"))
+
+            logger.debug(msg("Changing to directory", os.path.dirname(fname)))
+            os.chdir(os.path.dirname(fname))
         else:
             logger.debug(msg(
                 "Ignoring change, because not in CODE EDITING MODE", fname))
+        if fname not in self.watcher.files():
+            self._lost_files.append(fname)
+            logger.debug(msg("Lost watched file", fname))
+        QTimer.singleShot(500,self._reload_watch_files)
 
     def watch_file(self, path):
         logger.debug(msg("Trying to watch file", path))

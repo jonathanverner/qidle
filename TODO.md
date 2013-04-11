@@ -39,10 +39,6 @@
 
 == BUG FIXES ==
 
- -  Fix File Watches
-     -- when watching a file, at first nothing is added to the watched_files menu
-     -- reloading works only for the first change
-
  - Fix copy/paste
 
  - Fix showing images (for some reason, they seem to share the same data,
