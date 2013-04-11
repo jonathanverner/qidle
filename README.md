@@ -7,12 +7,17 @@ of the shell (and long running code does not freeze the interface).
 ## Features ##
 
   - syntax hilighting
-  - code completion & filename completion
+  - code completion, dict key & filename completion
+  - __doc__ and function signature tooltips
   - reload file on change (just open a file or drag and drop it onto the shell window)
+  - pretty printing of objects (extensible via plugins)
+    -- pylab.figure, QtGui.QImage, PIL.Image (images, yay :-))
 
 ## Planned Features ##
 
   - multiple tabs
+  - editor
+  - session saving, history saving
   - inspection tools
   - debugger
 

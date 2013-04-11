@@ -14,6 +14,12 @@
 
    - implement folding of blocks
 
+ - Session saving
+   -- save history/output/both
+   -- save session
+
+ - Debugger
+
  - Menus ...
 
    -- embed kate's menus
@@ -32,9 +38,6 @@
 
 
 == BUG FIXES ==
-
- -  Check that a file being watched multiple times
-     doesn't open multiple tabs (see 0b7d22378f1a8c838a714e4f791899a13f905649)
 
  -  Fix File Watches
      -- when watching a file, at first nothing is added to the watched_files menu
