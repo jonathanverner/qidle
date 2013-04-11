@@ -329,6 +329,25 @@ class Console(QObject):
         self._gotoEnd()
         self._mode = Console.MODE_CODE_EDITING
 
+    @pyqtSlot()
+    def exec_command(self,*args, **kwargs):
+        if 'cmd' in kwargs:
+            cmd = kwargs['cmd']
+            del kwargs['cmd']
+            if cmd == 'watch.list_files':
+                self._write_message("Currently watching the following files:")
+                self._write_message([unicode(x) for x in self.watcher.files()])
+                self._write_message("Total watched:",len(self.watcher.files()))
+                logger.debug(msg([x for x in self.watcher.files()]))
+            elif cmd == 'watch.reload':
+                self._reload_watch_files()
+            elif cmd in dir(self):
+                attr = self.__getattribute__(cmd)
+                if type(attr) == type(self.exec_command):
+                    attr(*args, **kwargs)
+                else:
+                    self.write_object(attr)
+
     def _write_message(self, *args, **kwargs):
         if 'html' in kwargs:
             html = kwargs['html']
