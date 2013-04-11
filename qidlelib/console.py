@@ -95,9 +95,16 @@ class Console(QObject):
         prev.appendText(cur.content())
         cur.deleteBlock()
 
-    def wordUnderCursor(self):
-        c = self._currentCursor
-        return self._currentBlock.wordUnderCursor(self._currentCursor)
+    def wordUnderCursor(self, cursor=None, delta=0):
+        """ Returns the word (name) under cursor @cursor (or self._currentCursor)
+            if @cursor is None. The cursor is shifted by @delta """
+        if cursor is None:
+            cursor = self._currentCursor
+        if delta > 0:
+            cursor.movePosition(QTextCursor.Right, QTextCursor.MoveAnchor, delta)
+        elif delta < 0:
+            cursor.movePosition(QTextCursor.Left, QTextCursor.MoveAnchor, abs(delta))
+        return self._currentBlock.wordUnderCursor(cursor)
 
     def textToCursor(self):
         return self._currentBlock.contentToCursor(self._currentCursor)
