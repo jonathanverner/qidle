@@ -222,7 +222,7 @@ class Console(QObject):
 
         self._lastBlock.setType(TextBlock.TYPE_MESSAGE)
         self._lastBlock.appendText("PyShell v 0.5: Starting ...")
-        self._appendBlock(TextBlock.TYPE_MESSAGE, 'Python version ' + sys.version, html=True)
+        self._write_message("Python version ", sys.version)
         self.start_editing()
 
         # Restart shell timer
@@ -280,9 +280,9 @@ class Console(QObject):
     @pyqtSlot()
     def shell_restarted(self):
         logger.debug("Shell restarted!")
-        self._appendBlock(TextBlock.TYPE_MESSAGE, "<span style='color:green'>"+"="*20 +
-                          "</span> SHELL RESTARTED <span style='color:green'>" + "="*20 + "</span>", html=True)
-        self._appendBlock(TextBlock.TYPE_MESSAGE, 'Python version ' + sys.version, html=True)
+        self._write_message("<span style='color:green'>","="*20,
+                            "</span> SHELL RESTARTED <span style='color:green'>","="*20,"</span>", html=True)
+        self._write_message('Python version ',sys.version, html=True)
         self.start_editing()
 
     @pyqtSlot()
@@ -296,6 +296,19 @@ class Console(QObject):
         new_code_block = self._appendBlock(TextBlock.TYPE_CODE_START)
         self._gotoEnd()
         self._mode = Console.MODE_CODE_EDITING
+
+    def _write_message(self, *args, **kwargs):
+        if 'html' in kwargs:
+            html = kwargs['html']
+        else:
+            html = True
+        msg = u''
+        for a in args:
+            try:
+                msg += unicode(a)
+            except Exception, e:
+                logger.warn("Exception while writing to console" + str(e))
+        self._appendBlock(TextBlock.TYPE_MESSAGE, msg, html)
 
     def _last_but_space(self):
         """ Returns true if all of the blocks following the block where the current
