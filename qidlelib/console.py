@@ -106,6 +106,30 @@ class Console(QObject):
             cursor.movePosition(QTextCursor.Left, QTextCursor.MoveAnchor, abs(delta))
         return self._currentBlock.wordUnderCursor(cursor)
 
+    def _containing_function(self):
+        """ Determines whether the cursor is located in the argument part of a function.
+            If yes, returns a (@cursor,@func_name) where  @cursor points to the opening brace
+            and @func_name is the function name. """
+        ct = self.textToCursor()
+        i=len(ct)-1
+        brackets = 0
+        logger.debug("ct == " + ct)
+        while i >= 0:
+            if ct[i] == ')':
+                brackets -=1
+            if ct[i] == '(':
+                if brackets < 0:
+                    brackets += 1
+                elif i > 0 and ct[i-1] not in TextBlock.WORD_STOP_CHARS:
+                    cursor = self._currentBlock.cursorAt(i-1)
+                    func_name = self._currentBlock.wordUnderCursor(cursor)
+                    cursor = self._currentBlock.cursorAt(i+len(func_name))
+                    logger.debug("func_name == "+ func_name)
+                    return (cursor,func_name)
+            i -= 1
+        return None
+
+
     def textToCursor(self):
         return self._currentBlock.contentToCursor(self._currentCursor)
 
@@ -440,34 +464,48 @@ class Console(QObject):
             self.restart_shell.emit()
 
     def _tool_tip_event(self, event):
+        if event.key() in [ Qt.Key_Escape ]:
+            QToolTip.hideText()
+            return
         if ( self.mode == Console.MODE_CODE_EDITING and event.text() == '(' ):
+            func_name = self.wordUnderCursor(delta=-2)
+            cursor = self._currentCursor
+        elif ( self.mode == Console.MODE_CODE_EDITING ):
             try:
-                doc = self.get_docs(self.wordUnderCursor(), _timeout=0.1, _default = None)
-                try:
-                    args, defaults, varargs, kwargs = self.get_f_sign(self.wordUnderCursor(), _timeout=0.1, _default = None)
-                    if defaults is not None:
-                        start = len(args)-len(defaults)
-                        for i in range(len(defaults)):
-                            args[i+start] += '=' + str(defaults[i])
-                    if varargs is not None:
-                        args.append('*'+varargs)
-                    if kwargs is not None:
-                        args.append('**'+kwargs)
-                    pos_args = ', '.join(args)
-                    sign_help = self.wordUnderCursor()+'('+pos_args+')\n\n'
-                except:
-                    sign_help = None
-                tooltip_text = ''
-                if sign_help is not None:
-                    tooltip_text = sign_help
-                if doc is not None:
-                    tooltip_text += doc
-                if len(tooltip_text) > 0:
-                    cursor_rect = self.widget.cursorRect()
-                    logger.debug("Showing help: "+tooltip_text+" at "+str(self.widget.mapToGlobal(cursor_rect.bottomRight())))
-                    QToolTip.showText(self.widget.mapToGlobal(cursor_rect.bottomRight()),tooltip_text,self.widget)
-            except Exception, e:
-                logger.debug(msg("Exception when showing tooltip:",e))
+                cursor, func_name = self._containing_function()
+            except:
+                QToolTip.hideText()
+                return
+        else:
+            QToolTip.hideText()
+            return
+        doc = self.get_docs(func_name, _timeout=0.01, _default=None)
+        try:
+            args, defaults, varargs, kwargs = self.get_f_sign(func_name, _timeout=0.01, _default = None)
+            if defaults is not None:
+                start = len(args)-len(defaults)
+                for i in range(len(defaults)):
+                    args[i+start] += '=' + str(defaults[i])
+            if varargs is not None:
+                args.append('*'+varargs)
+            if kwargs is not None:
+                args.append('**'+kwargs)
+            pos_args = ', '.join(args)
+            sign_help = func_name+'('+pos_args+')\n\n'
+        except:
+            sign_help = None
+        tooltip_text = ''
+        if sign_help is not None:
+            tooltip_text = sign_help
+        if doc is not None:
+            tooltip_text += doc
+        if len(tooltip_text) > 0:
+            cursor_rect = self.widget.cursorRect(cursor)
+            logger.debug("Showing help: "+tooltip_text+" at "+str(self.widget.mapToGlobal(cursor_rect.bottomRight())))
+            QToolTip.showText(self.widget.mapToGlobal(cursor_rect.bottomRight()),tooltip_text,self.widget)
+        else:
+            QToolTip.hideText()
+
 
 
     def _completion_event(self, event):
@@ -611,6 +649,7 @@ class Console(QObject):
         # Enter
         elif event.key() == Qt.Key_Return:
             self._process_enter()
+            QToolTip.hideText()
             return
 
         # BackSpace
@@ -678,10 +717,12 @@ class Console(QObject):
         if self._completion_event(event):
             return
 
+        ret =  self._widgetKeyPressEvent(event)
+
         # Function call tooltips
         self._tool_tip_event(event)
 
-        return self._widgetKeyPressEvent(event)
+        return ret
 
     def dragEnterEvent(self, e):
         file_url = QUrl(e.mimeData().text())
