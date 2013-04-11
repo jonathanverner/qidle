@@ -134,6 +134,8 @@ class Console(QObject):
         return self._currentBlock.contentToCursor(self._currentCursor)
 
     def _guessDictPrefix(self, char):
+        """ Tries to determine whether the user is typing a string-key in a dict. If yes
+            returns the dict name and the key typed so far. Otherwise returns None. """
         c = self._currentCursor
         block_content = self._currentBlock.content(include_decoration=True)
         pos = min(c.positionInBlock(), len(block_content))
@@ -164,6 +166,8 @@ class Console(QObject):
             return None
 
     def _guessStringPrefix(self, char):
+        """Tries to guess whether the user is typing a string (i.e. inside quotes)
+           and if yes, returns the string typed so far. Otherwise returns None. """
         c = self._currentCursor
         block_content = self._currentBlock.content(include_decoration=True)
         pos = min(c.positionInBlock(), len(block_content))
@@ -765,6 +769,8 @@ class Console(QObject):
 
     @pyqtSlot()
     def _reload_watch_files(self):
+        """ Removes all watched files and adds them again. When adding them
+            it also adds all files in the self._lost_files list. """
         fls = self.watcher.files()
         self.watcher.removePaths(fls)
         self.watcher.addPaths(fls)
@@ -772,6 +778,8 @@ class Console(QObject):
 
     @pyqtSlot(str)
     def _sourceChanged(self, fname):
+        """ Change to the diretory containing @fname (absolute path)
+            and execute the file. """
         fname = unicode(fname)
         logger.debug(fname)
         if self._mode == Console.MODE_CODE_EDITING:
