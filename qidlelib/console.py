@@ -335,6 +335,12 @@ class Console(QObject):
 
     @pyqtSlot()
     def exec_command(self,*args, **kwargs):
+        """ Executes a command in the console context.
+            The command is given by the cmd keyword argument.
+            It is either a predefined command or the name of
+            a method of the console object, in which case this
+            method is called with *args and **kwargs (where cmd
+            is first deleted from kwargs) """
         if 'cmd' in kwargs:
             cmd = kwargs['cmd']
             del kwargs['cmd']
@@ -353,6 +359,9 @@ class Console(QObject):
                     self.write_object(attr)
 
     def _write_message(self, *args, **kwargs):
+        """ Outputs a "System" message to the console. The message is composed
+            of string representations of args. If the keyword argument html
+            is present, the message is assumed to be html. """
         if 'html' in kwargs:
             html = kwargs['html']
         else:
