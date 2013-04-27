@@ -378,6 +378,7 @@ class Console(QObject):
 
     @pyqtSlot()
     def finished_running(self):
+        logger.debug("Finished running.")
         if len(self._lastBlock.content()) == 0:
             self._lastBlock.deleteBlock()
         self.start_editing()

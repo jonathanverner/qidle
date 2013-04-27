@@ -1,6 +1,5 @@
 from PyQt4.QtGui import QTextBlockUserData, QTextBlock, QTextCursor
 
-
 class TextBlockData(QTextBlockUserData):
 
     def __init__(self):
