@@ -341,9 +341,9 @@ class Console(QObject):
 
     @pyqtSlot(unicode, unicode)
     def write(self, stream, string):
-        assert self.mode == Console.MODE_RUNNING or self.mode == Console.MODE_WAITING_FOR_INTERRUPT, "Cannot write " + \
-            string + " to console stream "+stream+" in "+str(
-                self.mode) + " (need to be RUNNING/INTERRUPT mode) "
+        #assert self.mode == Console.MODE_RUNNING or self.mode == Console.MODE_WAITING_FOR_INTERRUPT, "Cannot write " + \
+        #    string + " to console stream "+stream+" in "+str(
+        #        self.mode) + " (need to be RUNNING/INTERRUPT mode) "
         if string.startswith('<html_snippet>'):
             self._lastBlock.appendHtml(string.replace(
                 "<html_snippet>", "").replace("</html_snippet>", ""))
@@ -850,13 +850,16 @@ class Console(QObject):
             self._write_message("Changing dir to ", os.path.dirname(fname),
                                 " and Reloading file ", os.path.basename(fname))
             self._appendBlock(TextBlock.TYPE_OUTPUT_STDOUT)
+            logger.debug(msg("Changing to directory", os.path.dirname(fname)))
+            os.chdir(os.path.dirname(fname))
             self._mode = Console.MODE_RUNNING
             self.run_code.emit(unicode(
                 "__shell__.os.chdir(__shell__.os.path.dirname('"+fname+"'))\n"))
+            logger.debug(msg("MODE:", self._mode))
+            self._mode = Console.MODE_RUNNING
+            logger.debug(msg("MODE:", self._mode))
             self.run_code.emit(unicode("execfile('"+fname+"')\n"))
-
-            logger.debug(msg("Changing to directory", os.path.dirname(fname)))
-            os.chdir(os.path.dirname(fname))
+            logger.debug(msg("MODE:", self._mode))
         else:
             logger.debug(msg(
                 "Ignoring change, because not in CODE EDITING MODE", fname))
