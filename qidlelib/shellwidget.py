@@ -8,6 +8,7 @@ from PyQt4.QtGui import QPlainTextEdit, QFont, QFileDialog
 from console import Console
 from insulate.utils import disconnect_object_signals, signal
 from insulatedshell import InsulatedShell
+from config import config
 
 
 class ShellWidget(QObject):
@@ -94,5 +95,7 @@ class ShellWidget(QObject):
         self.console.unwatch_file(fname)
 
     def quit(self):
+        if config.history:
+            self.console.save_history()
         self.kill_shell()
         self.quit_signal.emit()

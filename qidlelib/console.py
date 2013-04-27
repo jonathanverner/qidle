@@ -3,7 +3,10 @@
 
 from time import time
 import os
+from os.path import expanduser
+import gzip
 import sys
+import json
 import logging
 from insulate.debug import msg, debug
 logger = logging.getLogger(__name__)
@@ -18,6 +21,7 @@ from insulate.utils import signal
 from textblock import TextBlock, block_type_for_stream
 from syntax import PythonHighlighter
 from prettyprinters.printhooks import print_hooks
+from config import config
 
 
 class Console(QObject):
@@ -87,6 +91,54 @@ class Console(QObject):
             else:
                 b.appendText(content)
         return b
+
+    def _blocks(self):
+        b = TextBlock(self._document.begin())
+        ret = []
+        while not b.isLast():
+            ret.append(b)
+            b = b.next()
+        ret.append(b)
+        return ret
+
+    def _saveBlocksToJSON(self,num_of_blocks=None):
+        if num_of_blocks is None:
+            num_of_blocks = 0
+        ret = []
+        for b in self._blocks()[-num_of_blocks:]:
+            ret += [json.dumps({'block_type':b.type,'content':b.content()})]
+        return '\n'.join(ret)
+
+    def save_history(self, fname=None):
+        if fname is None:
+            fname = config.history_file
+        fname = expanduser(fname)
+        if fname.endswith('.gz'):
+            f = gzip.open(fname,'wb')
+        else:
+            f = open(fname,'wb')
+        try:
+            hist_size = config.history_size
+        except:
+            hist_size = None
+        f.write(self._saveBlocksToJSON(num_of_blocks=hist_size))
+        f.close()
+
+    def load_history(self, fname=None):
+        if fname is None:
+            fname = config.history_file
+        fname = expanduser(fname)
+        if not os.path.exists(fname):
+            return
+        if fname.endswith('.gz'):
+            f = gzip.open(fname,'rb')
+        else:
+            f = open(fname,'rb')
+        blocks = f.readlines()
+        for b in blocks:
+            bl = json.loads(b.strip())
+            self._appendBlock(**bl)
+
 
     def _joinCurrentToPreviousBlock(self):
         logger.debug(msg("Deleting current block"))
@@ -255,6 +307,9 @@ class Console(QObject):
             Qt.ScrollBarAlwaysOff)
         self.completer.setWidget(self.widget)
         self.completion_enabled = True
+
+        if config.history:
+            self.load_history()
 
         self._lastBlock.setType(TextBlock.TYPE_MESSAGE)
         self._lastBlock.appendText("PyShell v 0.5: Starting ...")
