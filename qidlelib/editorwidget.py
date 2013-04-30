@@ -1,6 +1,6 @@
 import os
 from PyQt4.QtCore import QObject, QDir, Qt, pyqtSlot
-from PyQt4.QtGui import QPlainTextEdit, QFileDialog, QCompleter, QStringListModel, QTextCursor, QFont
+from PyQt4.QtGui import QPlainTextEdit, QFileDialog, QCompleter, QStringListModel, QTextCursor, QFont, QKeySequence
 
 
 import logging
@@ -123,12 +123,15 @@ class PlainTextEditorWidget(QObject):
         self._widgetKeyPressEvent = self.widget.keyPressEvent
         self.widget.keyPressEvent = self.keyPressEvent
         self.keypress_event_key_hooks = {}
+        self.keypress_keysequence_hooks = []
         self.keypress_event_post_hooks = []
         self.keypress_event_pre_hooks = []
         self._register_keypress_hook(self._process_completion_widget,pre=True)
         self._register_keypress_hook(self._process_enter,keys=[Qt.Key_Return])
         self._register_keypress_hook(self._process_backspace,keys=[Qt.Key_Backspace])
         self._register_keypress_hook(self._completion_hook,post=True)
+        self._register_keypress_hook(self._process_tab,keys=[Qt.Key_Tab])
+        self._register_keypress_hook(self._process_home,keys=[Qt.Key_Home], keysequences=[QKeySequence.MoveToStartOfLine])
 
     def _init_codecompletion(self):
         self.completer = QCompleter(
@@ -147,12 +150,13 @@ class PlainTextEditorWidget(QObject):
             self.completion_enabled = False
 
 
-    def _register_keypress_hook(self, hook, keys=None, pre=False, post=False):
+    def _register_keypress_hook(self, hook, keys=None, pre=False, post=False, keysequences = None):
         """ Registers hooks into the keypress event handling mechanism.
 
              @hook ... a function taking one argument --- the event
 
              If @key is not None then it is a list of keys for which the hook will be activated.
+             If @keysequence is not None then it is a list of sequences whose match will activate the hook
              If @pre is True, then the hook will be called before key specific hooks.
              If @post is True, then the hook will be called after key specific hooks.
 
@@ -163,6 +167,9 @@ class PlainTextEditorWidget(QObject):
                 if k not in self.keypress_event_key_hooks:
                     self.keypress_event_key_hooks[k] = []
                     self.keypress_event_key_hooks[k].append(hook)
+        if keysequences is not None:
+            for ks in keysequences:
+                self.keypress_keysequence_hooks.append((ks,hook))
         if pre:
             self.keypress_event_pre_hooks.append(hook)
         if post:
@@ -395,6 +402,11 @@ class PlainTextEditorWidget(QObject):
             for h in self.keypress_event_key_hooks[event.key()]:
                 if h(event):
                     return
+
+        for (seq, h) in self.keypress_keysequence_hooks:
+            if event.matches(seq) and h(event):
+                return True
+
         for h in self.keypress_event_post_hooks:
             if h(event):
                 return
