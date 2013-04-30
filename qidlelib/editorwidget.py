@@ -329,6 +329,32 @@ class PlainTextEditorWidget(QObject):
             c.insertText(insertion)
             self._currentCursor = c
 
+    def _process_home(self, event=None):
+        ln, lnum, col = self._linecol(include_line_text=True)
+        pos = 0
+        while pos < len(ln) and ln[pos] in ' \t':
+            pos += 1
+        c = self._currentCursor
+        if col == pos:
+            return False
+
+        if event.modifiers() & Qt.ShiftModifier:
+            move_type = QTextCursor.KeepAnchor
+        else:
+            move_type = QTextCursor.MoveAnchor
+
+        if col > pos:
+            c.movePosition(QTextCursor.Left, move_type, col-pos)
+        else:
+            c.movePosition(QTextCursor.Right, move_type, pos-col)
+            
+        self._currentCursor = c
+        return True
+
+    def _process_tab(self, event=None):
+        self._currentCursor.insertText(' '*PlainTextEditorWidget.INDENT_SIZE)
+        return True
+
     def _process_enter(self,event=None):
         prepend_spaces = 0
         pos =  self._unmatched_position()
