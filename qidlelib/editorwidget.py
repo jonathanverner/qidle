@@ -362,8 +362,6 @@ class PlainTextEditorWidget(QObject):
             prepend_spaces = pos+1
         else:
             if self._line().strip().endswith(':'):
-                logger.debug("New Function:")
-                logger.debug(msg("Full indents:", self._indentLevel(spaces=False)))
                 prepend_spaces = (self._indentLevel(spaces=False)+1)*PlainTextEditorWidget.INDENT_SIZE
             else:
                 prepend_spaces = self._indentLevel()
@@ -439,6 +437,7 @@ class PlainTextEditorWidget(QObject):
         for h in self.keypress_event_pre_hooks:
             if h(event):
                 return
+
         if event.key() in self.keypress_event_key_hooks:
             for h in self.keypress_event_key_hooks[event.key()]:
                 if h(event):
