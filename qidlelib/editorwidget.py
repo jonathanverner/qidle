@@ -229,22 +229,6 @@ class PlainTextEditorWidget(QObject):
     def _cursorPos(self):
         return self._currentCursor.position()
 
-    @property
-    def _linecol(self):
-        """ Returns the pair (line, col) determining
-            the position of the cursor. lines start from 1,
-            columns start from 0 """
-        content = self.content[:self._cursorPos]
-        line = 1
-        col = 0
-        for char in content:
-            if char == '\n':
-                line += 1
-                col = 0
-            else:
-                col += 1
-        return (line, col)
-
     def _wordUnderCursor(self,center_char=""):
         """ Returns the word which would be under the cursor after the
             insertion of center_char at the cursor position. """
@@ -259,11 +243,44 @@ class PlainTextEditorWidget(QObject):
         post = substr(content,cpos,PlainTextEditorWidget.WORD_STOP_CHARS,direction = 1)
         return prev + center_char + post
 
+    def _linecol(self, include_line_text = False):
+        """ If @include_line_text is False (default) returns the pair (line, col) determining
+            the position of the cursor. lines start from 1, columns start from 0.
+            If @include_line_text is True, returns the triple (text, line, col), where
+            (line,col) is as above and text is the text of the current line excluding the
+            newline.
+        """
+        content = self.content[:self._cursorPos]
+        line = 1
+        col = 0
+        text = ''
+        l_start_pos = 0
+        pos = 0
+        for char in content:
+            if char == '\n':
+                line += 1
+                col = 0
+                text = ''
+                l_start_pos = pos+1
+            else:
+                col += 1
+            pos += 1
+        if include_line_text:
+            for char in self.content[self._cursorPos:]:
+                pos += 1
+                if char == '\n':
+                    break
+            return (self.content[l_start_pos:pos], line, col)
+        else:
+            return (line, col)
+
     def _line(self, line_no = None):
         """ Returns the content of the current line. """
         if line_no is None:
-            line_no, col = self._linecol
+            text, line_no, col = self._linecol(include_line_text=True)
+            return text
         return self.content.split('\n')[line_no-1]
+
 
     def _indentLevel(self, line_no=None, spaces=True):
         """ Returns the indent level of line number @line_no.
@@ -294,8 +311,7 @@ class PlainTextEditorWidget(QObject):
             or None if there is no unmatched element left
             of the cursor on the current line.
         """
-        ln = self._line()
-        lnum, col = self._linecol
+        ln,lnum,col = self._linecol(include_line_text=True)
         matching_chars = [ ('"','"'),
                            ('(',')'), ('{','}'), ('[',']') ]
         return last_unmatched_char( ln, matching_chars )
@@ -329,8 +345,7 @@ class PlainTextEditorWidget(QObject):
         return True
 
     def _process_backspace(self,event=None):
-        cur_line = self._line()
-        l,col = self._linecol
+        cur_line,l,col = self._linecol(include_line_text=True)
         c = self._currentCursor
         if len(cur_line[:col].strip('\n \t')) == 0:
             lvl = self._indentLevel()
@@ -363,7 +378,7 @@ class PlainTextEditorWidget(QObject):
         #logger.debug("cpt:"+completion_prefix)
         if len(completion_prefix) > 2:
             #logger.debug("cp:"+completion_prefix)
-            line,col = self._linecol
+            line,col = self._linecol()
             jedi_compl = jedi.Script(self.content,
                                         line,
                                         col,
