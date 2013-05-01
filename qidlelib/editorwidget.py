@@ -99,7 +99,7 @@ class KateEditorWidget(QObject):
 
 class PlainTextEditorWidget(QObject):
     INDENT_SIZE = 4
-    WORD_STOP_CHARS = " ~!@#$%^&*()+{}|:\"<>?,/;'[]\\-=\n"
+    WORD_STOP_CHARS = " ~!@#$%^&*()+{}|:\"<>?,/;.'[]\\-=\n"
 
     def __init__(self, parent=None):
         super(PlainTextEditorWidget, self).__init__(parent=parent)
@@ -399,14 +399,13 @@ class PlainTextEditorWidget(QObject):
         if not (self.completion_enabled and len(event.text()) != 0):
             return False
         completion_prefix = self._wordUnderCursor(center_char=unicode(event.text()))
-        #logger.debug("cpt:"+completion_prefix)
-        if len(completion_prefix) > 2:
-            #logger.debug("cp:"+completion_prefix)
+        if len(completion_prefix) > 0 or event.text() == '.':
             line,col = self._linecol()
-            jedi_compl = jedi.Script(self.content,
-                                        line,
-                                        col,
-                                        source_path = self.file_dir())
+            src = self.content[:self._cursorPos]+unicode(event.text())+self.content[self._cursorPos:]
+            jedi_compl = jedi.Script(src,
+                                     line,
+                                     col,
+                                     source_path = self.file_dir())
             try:
                 completions = jedi_compl.complete()
                 model = QStringListModel([c.word for c in completions])
