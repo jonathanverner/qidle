@@ -1,4 +1,6 @@
 from sys import version_info
+import gzip
+
 if version_info[0] < 3:
     str_type = unicode
     python_3 = False
@@ -6,6 +8,17 @@ else:
     str_type = str
     python_3 = True
 
+
+def gzopen(fname, mode):
+    """ Opens the file @fname in mode @mode and returns the file object.
+        If @fname ends with '.gz', transparently decompresses it (using
+        the gzip library, i.e. the object returned is in fact not the
+        standard file object in this case).
+    """
+    if fname.endswith('.gz'):
+        return gzip.open(fname,mode)
+    else:
+        return open(fname,mode)
 
 def substr(s, start_pos, end_chars, direction=1):
     """ Returns the largest substring of s which starts
@@ -32,7 +45,7 @@ def last_unmatched_char(s, chars):
         >>> last_unmatched_char(s,matchings)
         13
         >>>
-        
+
     """
     counters = {}
     opening = []

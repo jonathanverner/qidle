@@ -22,6 +22,7 @@ from textblock import TextBlock, block_type_for_stream
 from syntax import PythonHighlighter
 from prettyprinters.printhooks import print_hooks
 from config import config
+from util import gzopen
 
 
 class Console(QObject):
@@ -113,10 +114,7 @@ class Console(QObject):
         if fname is None:
             fname = config.history_file
         fname = expanduser(fname)
-        if fname.endswith('.gz'):
-            f = gzip.open(fname,'wb')
-        else:
-            f = open(fname,'wb')
+        f = gzopen(fname,'wb')
         try:
             hist_size = config.history_size
         except:
@@ -130,10 +128,7 @@ class Console(QObject):
         fname = expanduser(fname)
         if not os.path.exists(fname):
             return
-        if fname.endswith('.gz'):
-            f = gzip.open(fname,'rb')
-        else:
-            f = open(fname,'rb')
+        f = gzopen(fname,'rb')
         blocks = f.readlines()
         for b in blocks:
             bl = json.loads(b.strip())
