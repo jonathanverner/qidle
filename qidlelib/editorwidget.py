@@ -186,10 +186,13 @@ class PlainTextEditorWidget(QObject):
             self.content = open(fname,'r').read()
             self.name_changed.emit(self.name)
         except Exception, e:
-            logger.warn("Unable read file "+fname+" (exception:"+e+" occured)")
+            logger.warn("Unable to read file "+fname+" (exception:"+str(e)+" occured)")
 
     @property
     def name(self):
+        """ Returns the last part of the filepath or "" if no
+            file is associated with the document
+        """
         if self.local_path:
             return os.path.basename(self.local_path)
         else:
@@ -317,18 +320,6 @@ class PlainTextEditorWidget(QObject):
         return last_unmatched_char( ln, matching_chars )
 
 
-    @pyqtSlot(unicode)
-    def _insertCompletion(self, completion):
-        insertion = completion[len(self.completer.completionPrefix()):]
-        if len(insertion) == 0:
-            self._process_enter()
-        else:
-            c = self._currentCursor
-            c.movePosition(QTextCursor.Left)
-            c.movePosition(QTextCursor.EndOfWord)
-            c.insertText(insertion)
-            self._currentCursor = c
-
     def _process_home(self, event=None):
         ln, lnum, col = self._linecol(include_line_text=True)
         pos = 0
@@ -347,7 +338,7 @@ class PlainTextEditorWidget(QObject):
             c.movePosition(QTextCursor.Left, move_type, col-pos)
         else:
             c.movePosition(QTextCursor.Right, move_type, pos-col)
-            
+
         self._currentCursor = c
         return True
 
@@ -384,7 +375,17 @@ class PlainTextEditorWidget(QObject):
             c.deletePreviousChar()
         return True
 
-
+    @pyqtSlot(unicode)
+    def _insertCompletion(self, completion):
+        insertion = completion[len(self.completer.completionPrefix()):]
+        if len(insertion) == 0:
+            self._process_enter()
+        else:
+            c = self._currentCursor
+            c.movePosition(QTextCursor.Left)
+            c.movePosition(QTextCursor.EndOfWord)
+            c.insertText(insertion)
+            self._currentCursor = c
 
     def _process_completion_widget(self, event):
         if self.completer.popup().isVisible():

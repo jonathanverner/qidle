@@ -160,7 +160,6 @@ class Console(QObject):
         ct = self.textToCursor()
         i=len(ct)-1
         brackets = 0
-        logger.debug("ct == " + ct)
         while i >= 0:
             if ct[i] == ')':
                 brackets -=1
