@@ -74,7 +74,10 @@ class KateEditorWidget(QObject):
         if fname is None:
             fname = QFileDialog.getOpenFileName(
                 self.widget, "Open File", QDir.currentPath(), "Python Source Files (*.py)")
-        self.doc.openUrl(KUrl(fname))
+        return self.doc.openUrl(KUrl(fname))
+
+    def close(self):
+        return self.doc.documentSave()
 
     @property
     def name(self):
@@ -97,7 +100,7 @@ class KateEditorWidget(QObject):
         self.doc.setText(value)
 
 
-class PlainTextEditorWidget(QObject):
+class PlainTextEditorWidget(QObject,object):
     INDENT_SIZE = 4
     WORD_STOP_CHARS = " ~!@#$%^&*()+{}|:\"<>?,/;.'[]\\-=\n"
 
@@ -111,7 +114,7 @@ class PlainTextEditorWidget(QObject):
         self.font_size = 10
         self.font = QFont("Ubuntu Mono", self.font_size)
         self.widget.setFont(self.font)
-
+        self.widget.document().modificationChanged.connect(self._emit_name_change)
 
         #self._widgetFocusInEvent = self.widget.focusInEvent
         #self.widget.focusInEvent = self.focusInEvent
@@ -177,16 +180,81 @@ class PlainTextEditorWidget(QObject):
 
 
 
+    def save_as(self, fname=None):
+        """ Saves the contents of the widget to the file with filename @fname.
+            If @fname is none, it asks the user for a filename.
+
+            Returns True if successful, False otherwise
+            (i.e. exception occured during writing, we do not yet have a
+            filename and the user canceled the file dialog)
+        """
+        if fname is None:
+            fname = QFileDialog.getSaveFileName(
+                self.widget, "Save File As", QDir.currentPath(), "Python Source Files (*.py)")
+            if len(fname) == 0:
+                return False
+
+        try:
+            open(fname,'w').write(self.content)
+            self.local_path = unicode(fname)
+            self.modified = False
+            self._emit_name_change()
+        except Exception, e:
+            logger.error("Unable to write file "+fname+" (exception:"+str(e)+" occured)")
+            return False
+        return True
+
+    def save(self):
+        """ Saves the contents of the widget to the current file.
+            If there is no current file, asks the user for a filename
+            where to save it.
+
+            Returns True if successful, False otherwise
+            (i.e. exception occured during writing, we do not yet have a
+            filename and the user canceled the file dialog)
+        """
+        return self.save_as(self.local_path)
 
     def open_file(self, fname=None):
+        """ Loads the file @fname into the widget. If @fname is None,
+            prompts the user for a filename.
+
+            Returns True if successful, False otherwise
+            (i.e. exception occured during writing, we do not yet have a
+            filename and the user canceled the file dialog)
+        """
         if fname is None:
             fname = QFileDialog.getOpenFileName(
                 self.widget, "Open File", QDir.currentPath(), "Python Source Files (*.py)")
+            if len(fname) == 0:
+                return False
         try:
-            self.content = open(fname,'r').read()
-            self.name_changed.emit(self.name)
+            self.content = open(unicode(fname),'r').read()
+            self.local_path = unicode(fname)
+            self.modified = False
+            self._emit_name_change()
         except Exception, e:
             logger.warn("Unable to read file "+fname+" (exception:"+str(e)+" occured)")
+            return False
+        return True
+
+    def close(self):
+        """ Tries to save changes to the file, if it is modified.
+            Returns True if successful False otherwise.
+        """
+        if not self.modified:
+            return True
+        else:
+            return self.save()
+
+    @property
+    def modified(self):
+        """ True if the document has been modified by the user. """
+        return self.widget.document().isModified()
+
+    @modified.setter
+    def modified(self, value):
+        self.widget.document().setModified(value)
 
     @property
     def name(self):
@@ -197,6 +265,20 @@ class PlainTextEditorWidget(QObject):
             return os.path.basename(self.local_path)
         else:
             return ""
+
+    @property
+    def display_name(self):
+        """ Returns a name of the document suitable for display. """
+        nm = self.name
+        if len(nm) == 0:
+            nm = self.widget.tr("Untitled")
+        if self.modified:
+            nm = "* "+nm
+        return nm
+
+    @pyqtSlot()
+    def _emit_name_change(self):
+        self.name_changed.emit(self.display_name)
 
     @property
     def path(self):

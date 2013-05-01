@@ -93,11 +93,16 @@ class Console(QObject):
                 b.appendText(content)
         return b
 
-    def _blocks(self):
+    def _blocks(self, block_types = None):
+        """
+            Returns a list of the blocks whose type is in @block_types,
+            if @block_types is None, returns all blocks.
+        """
         b = TextBlock(self._document.begin())
         ret = []
         while not b.isLast():
-            ret.append(b)
+            if block_types is None or b.type in block_types:
+                ret.append(b)
             b = b.next()
         ret.append(b)
         return ret
@@ -109,6 +114,27 @@ class Console(QObject):
         for b in self._blocks()[-num_of_blocks:]:
             ret += [json.dumps({'block_type':b.type,'content':b.content()})]
         return '\n'.join(ret)
+
+    def _blockcontent(self, block_types = None):
+        """ Returns the content of all the blocks having type in @block_type
+            (or of all blocks if @block_type is None) """
+        return "\n".join([b.content() for b in self._blocks(block_types)])
+
+    def save_to_file(self, fname, block_types = None):
+        """ Saves the contents of the blocks whose type is in block_types
+            to the file @fname.
+
+            Returns True if successful, False otherwise.
+        """
+        try:
+            f = gzopen(fname,'wb')
+            f.write(self._blockcontent(block_types))
+            f.close()
+            return True
+        except Exception, e:
+            logger.error(msg("Error saving to file", fname, "(exception: ", e, ")"))
+            return False
+
 
     def save_history(self, fname=None):
         if fname is None:

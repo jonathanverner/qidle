@@ -67,6 +67,9 @@ class Qidle(QApplication):
     def _set_keyboard_shortcuts(self):
         self.new_file_action.setShortcut(QKeySequence(self.tr("Ctrl+N")))
         self.open_file_action.setShortcut(QKeySequence(self.tr("Ctrl+O")))
+        self.save_file_action.setShortcut(QKeySequence(self.tr("Ctrl+S")))
+        self.save_file_as_action.setShortcut(QKeySequence(self.tr("Ctrl+Shift+S")))
+        self.close_file_action.setShortcut(QKeySequence(self.tr("Ctrl+W")))
         self.next_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+.")))
         self.prev_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+,")))
         self.shell_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+1")))
@@ -76,9 +79,13 @@ class Qidle(QApplication):
         self.new_file_action.triggered.connect(self.editorTabs.new_tab)
         self.open_file_action.triggered.connect(self.editorTabs.open_file)
         self.quit_action.triggered.connect(self.shell_widget.quit)
+        self.save_file_action.triggered.connect(self._save_tab)
+        self.save_file_as_action.triggered.connect(self._saveas_tab)
+        self.close_file_action.triggered.connect(self._close_tab)
 
         # Shell
         self.restart_shell_action.triggered.connect(self.shell_widget.restart_shell)
+        self.edit_shell_code_action.triggered.connect(self.edit_code)
 
         # View
         self.next_tab_action.triggered.connect(self.focus_next_tab)
@@ -99,9 +106,13 @@ class Qidle(QApplication):
     def _add_actions(self):
         self.new_file_action = self.menus['File'].addAction(self.tr("&New File"))
         self.open_file_action = self.menus['File'].addAction(self.tr("&Open File..."))
+        self.save_file_action = self.menus['File'].addAction(self.tr("&Save File"))
+        self.save_file_as_action = self.menus['File'].addAction(self.tr("Save File &As..."))
+        self.close_file_action = self.menus['File'].addAction(self.tr("&Close File"))
         self.quit_action = self.menus['File'].addAction(self.tr("&Quit"))
 
         self.restart_shell_action = self.menus['Shell'].addAction(self.tr("&Restart Shell"))
+        self.edit_shell_code_action = self.menus['Shell'].addAction(self.tr("&Edit Code in New Tab"))
 
         self.next_tab_action = self.menus['View'].addAction(self.tr("&Next Tab"))
         self.prev_tab_action = self.menus['View'].addAction(self.tr("&Previous Tab"))
@@ -162,7 +173,42 @@ class Qidle(QApplication):
 
         self.tabwidget.setCurrentIndex(self.tabwidget.currentIndex())
 
-    def _close_tab(self, tab_num):
+    def edit_code(self):
+        """ Opens a new editor tab and inserts the code from the current shell session
+            into this tab.
+        """
+        code = self.shell_widget.code_content()
+        self.editorTabs.new_tab(code)
+
+    def _save_tab(self, tab_num=None):
+        """ Saves the tab number @tab_num. If @tab_num is None (default),
+            saves the current tab.
+
+            Returns True on success, False otherwise.
+        """
+        if type(tab_num) != int:
+            tab_num = None
+        if self.editorTabs.own_tab(tab_num):
+            return self.editorTabs.save_tab(tab_num)
+        else:
+            return self.shell_widget.save_to_file()
+
+    def _saveas_tab(self, tab_num=None):
+        """ Saves the tab number @tab_num into a new file. If @tab_num is None (default),
+            saves the current tab.
+
+            Returns True on success, False otherwise.
+        """
+        if type(tab_num) != int:
+            tab_num = None
+        if self.editorTabs.own_tab(tab_num):
+            return self.editorTabs.saveas_tab(tab_num)
+        else:
+            return self.shell_widget.save_to_file()
+
+    def _close_tab(self, tab_num=None):
+        if type(tab_num) != int:
+            tab_num = None
         if self.editorTabs.own_tab(tab_num):
             self.editorTabs.close_tab(tab_num)
         else:

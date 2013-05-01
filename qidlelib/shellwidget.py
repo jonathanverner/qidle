@@ -9,6 +9,7 @@ from console import Console
 from insulate.utils import disconnect_object_signals, signal
 from insulatedshell import InsulatedShell
 from config import config
+from textblock import TextBlock
 
 
 class ShellWidget(QObject):
@@ -89,7 +90,26 @@ class ShellWidget(QObject):
                                                 "Watch a Python Source File",
                                                 QDir.currentPath(),
                                                 "Python Source Files (*.py)")
+            if len(fname) == 0:
+                return False
         self.console.watch_file(fname)
+
+    def code_content(self):
+        """ Returns the python code in the current console. """
+        return self.console._blockcontent(block_types=TextBlock.CODE_TYPES)
+
+    def save_to_file(self, fname=None):
+        """ Saves the contents of the console to the file @fname.
+            If @fname is None, the user is prompted for a filename.
+
+            Returns True if successful, False otherwise.
+        """
+        if fname is None:
+            fname = QFileDialog.getSaveFileName(
+                self.console.widget, "Save Console Output As", QDir.currentPath(), "")
+            if len(fname) == 0:
+                return False
+        return self.console.save_to_file(unicode(fname))
 
     def unwatch_file(self, fname):
         self.console.unwatch_file(fname)
