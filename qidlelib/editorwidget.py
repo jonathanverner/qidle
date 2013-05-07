@@ -430,21 +430,25 @@ class PlainTextEditorWidget(QObject,object):
 
     def _process_enter(self,event=None):
         prepend_spaces = 0
-        pos =  self._unmatched_position()
-        if pos is not None:
-            prepend_spaces = pos+1
+        line_text,l,col = self._linecol(include_line_text = True)
+        if col == 0:
+            prepend_spaces = 0
         else:
-            if self._line().strip().endswith(':'):
-                prepend_spaces = (self._indentLevel(spaces=False)+1)*PlainTextEditorWidget.INDENT_SIZE
+            pos =  self._unmatched_position()
+            if pos is not None:
+                prepend_spaces = pos+1
             else:
-                prepend_spaces = self._indentLevel()
+                if line_text.strip().endswith(':'):
+                    prepend_spaces = (self._indentLevel(spaces=False)+1)*PlainTextEditorWidget.INDENT_SIZE
+                else:
+                    prepend_spaces = self._indentLevel()
         self._currentCursor.insertText('\n'+' '*prepend_spaces)
         return True
 
     def _process_backspace(self,event=None):
         cur_line,l,col = self._linecol(include_line_text=True)
         c = self._currentCursor
-        if len(cur_line[:col].strip('\n \t')) == 0:
+        if col > 0 and len(cur_line[:col].strip('\n \t')) == 0:
             lvl = self._indentLevel()
             delchars = lvl % PlainTextEditorWidget.INDENT_SIZE
             if delchars == 0 and lvl >0:
