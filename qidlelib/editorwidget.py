@@ -127,7 +127,7 @@ class PlainTextEditorWidget(QObject,object):
         self._init_keypresshandling()
 
     def _show_search_bar(self):
-        logger.debug("")
+        """ Shows the search bar and gives it input focus. """
         self._search_widget.show()
         self._search_widget.setFocus()
 
@@ -429,6 +429,7 @@ class PlainTextEditorWidget(QObject,object):
 
     @property
     def _cursorPos(self):
+        """ The 0-based position of the current cursor in the document """
         return self._currentCursor.position()
 
     def _wordUnderCursor(self,center_char=""):
@@ -488,7 +489,7 @@ class PlainTextEditorWidget(QObject,object):
         """ Returns the indent level of line number @line_no.
             The default value of @line_no is None which means
             the current line. If @spaces is True, the indent
-            level will be converted the number of spaces, otherwise
+            level will be converted to the number of spaces, otherwise
             it will be the number of full 'Indents'
         """
         ln = self._line(line_no)
@@ -510,8 +511,7 @@ class PlainTextEditorWidget(QObject,object):
         """ Returns the position of the nearest unmatched
             element (i.e. (, {, [, ', " ) to the left
             of the current cursor (but on the same line)
-            or None if there is no unmatched element left
-            of the cursor on the current line.
+            or None if there is no unmatched element left.
         """
         ln,lnum,col = self._linecol(include_line_text=True)
         matching_chars = [ ('"','"'),
