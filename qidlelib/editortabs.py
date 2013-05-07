@@ -27,9 +27,9 @@ class EditorTabs(QObject):
             ed_id = self._find_tab(fname)
             if ed_id is not None:
                 self.tabwidget.setCurrentWidget(self.tabs[ed_id].widget)
-        else:
-            tab_id = self.new_tab()
-            self.tabs[tab_id].open_file(fname)
+                return
+        tab_id = self.new_tab()
+        self.tabs[tab_id].open_file(fname)
 
     @pyqtSlot()
     def save_tab(self, tabnum = None):
