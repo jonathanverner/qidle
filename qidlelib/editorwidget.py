@@ -1,6 +1,7 @@
 import os
 from PyQt4.QtCore import QObject, QDir, Qt, pyqtSlot
-from PyQt4.QtGui import QPlainTextEdit, QFileDialog, QCompleter, QStringListModel, QTextCursor, QFont, QKeySequence
+from PyQt4.QtGui import QPlainTextEdit, QFileDialog, QCompleter, QStringListModel, QTextCursor, QFont, QMessageBox
+from PyQt4.QtGui import QVBoxLayout, QAction, QKeySequence, QWidget, QTextEdit, QColor
 
 
 import logging
@@ -9,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 from syntax import PythonHighlighter
 from util import substr, last_unmatched_char
+from search_bar import search_bar
 
 
 
@@ -58,7 +60,7 @@ class KateEditorWidget(QObject):
         self.doc = self.view.document()
         self.doc.setMode("Python")
 
-        self.widget.setStyleSheet("""
+        self.editor_widget.setStyleSheet("""
             QFrame { border:none }
             QScrollBar:horizontal {
                 width: 0px;
@@ -106,25 +108,67 @@ class PlainTextEditorWidget(QObject,object):
 
     def __init__(self, parent=None):
         super(PlainTextEditorWidget, self).__init__(parent=parent)
-        self._widget = QPlainTextEdit(parent)
-        self.hilighter = PythonHighlighter(self._widget.document())
+        self._construct_widget(parent)
+
+        self.find_action = QAction(self.editor_widget)
+        self.editor_widget.addAction(self.find_action)
+        self.find_action.setShortcut(QKeySequence(self.tr("Ctrl+F")))
+        self.find_action.triggered.connect(self._show_search_bar)
+
+
         self.name_changed = signal()
         self.local_path = None
 
-        self.font_size = 10
-        self.font = QFont("Ubuntu Mono", self.font_size)
-        self.widget.setFont(self.font)
-        self.widget.document().modificationChanged.connect(self._emit_name_change)
 
-        #self._widgetFocusInEvent = self.widget.focusInEvent
-        #self.widget.focusInEvent = self.focusInEvent
+        #self._widgetFocusInEvent = self.editor_widget.focusInEvent
+        #self.editor_widget.focusInEvent = self.focusInEvent
 
         self._init_codecompletion()
         self._init_keypresshandling()
 
+    def _show_search_bar(self):
+        logger.debug("")
+        self._search_widget.show()
+        self._search_widget.setFocus()
+
+    def _construct_widget(self, parent):
+        """ Constructs the widget:
+              -- the QPlainTextEdit
+              -- the search bar
+        """
+
+        self._widget_layout = QVBoxLayout()
+        self._widget_layout.setMargin(0)
+
+        # Search Widget
+        self._search_widget = search_bar(parent)
+        self._search_widget.search_term_changed.connect(self.find)
+        self._search_widget.search_canceled.connect(self.cancel_find)
+        self._search_widget.next_match.connect(self.next_match)
+        self._search_widget.prev_match.connect(self.prev_match)
+
+        # Text Editor Widget
+        self._editor_widget = QPlainTextEdit(parent)
+        self._widget_layout.addWidget(self.editor_widget)
+        self._widget_layout.addWidget(self._search_widget)
+        self.hilighter = PythonHighlighter(self.editor_widget.document())
+        self.font_size = 10
+        self.font = QFont("Ubuntu Mono", self.font_size)
+        self.editor_widget.setFont(self.font)
+        self.editor_widget.document().modificationChanged.connect(self._emit_name_change)
+
+        self._widget = QWidget(parent)
+        self.editor_widget.setStyleSheet("""
+            QWidget { border:none; }
+            }
+        """)
+        self._search_widget.hide()
+        self.widget.setLayout(self._widget_layout)
+
+
     def _init_keypresshandling(self):
-        self._widgetKeyPressEvent = self.widget.keyPressEvent
-        self.widget.keyPressEvent = self.keyPressEvent
+        self._widgetKeyPressEvent = self.editor_widget.keyPressEvent
+        self.editor_widget.keyPressEvent = self.keyPressEvent
         self.keypress_event_key_hooks = {}
         self.keypress_keysequence_hooks = []
         self.keypress_event_post_hooks = []
@@ -146,7 +190,7 @@ class PlainTextEditorWidget(QObject,object):
             "QWidget {border-width: 1px; border-color: black;}")
         self.completer.popup().setVerticalScrollBarPolicy(
             Qt.ScrollBarAlwaysOff)
-        self.completer.setWidget(self.widget)
+        self.completer.setWidget(self.editor_widget)
         if have_jedi:
             self.completion_enabled = True
         else:
@@ -179,6 +223,61 @@ class PlainTextEditorWidget(QObject,object):
             self.keypress_event_pre_hooks.append(hook)
 
 
+    def find(self,term):
+        """ Searches for the term @term and
+              -- hilights all of its occurances
+              -- moves to the first occurance
+              -- informs the search_widget about the number of occurances
+              -- saves the cursors of the occurances to the _matches list
+        """
+        color = QColor(Qt.yellow).lighter(130)
+        selections = []
+        goto_cursor = self._currentCursor
+        self.editor_widget.moveCursor(QTextCursor.Start)
+        count = 0
+        self._matches = []
+        self._match_num = 0
+        while self.editor_widget.find(term):
+            if count == 0:
+                goto_cursor = self._currentCursor
+            sel = QTextEdit.ExtraSelection()
+            sel.format.setBackground(color)
+            sel.cursor = self._currentCursor
+            selections.append(sel)
+            self._matches.append(self._currentCursor)
+            count += 1
+        self.editor_widget.setExtraSelections(selections)
+        self._currentCursor = goto_cursor
+        self._search_widget.found_matches(count)
+
+    def next_match(self):
+        """ Moves the cursor to the next occurance of the term
+            we are currently actively searching for.
+        """
+        if len(self._matches) == 0:
+            return
+        self._match_num += 1
+        if self._match_num >= len(self._matches):
+            self._match_num = 0
+        self._currentCursor = self._matches[self._match_num]
+
+    def prev_match(self):
+        """ Moves the cursor to the previous occurance of the term
+            we are currently actively searching for.
+        """
+        if len(self._matches) == 0:
+            return
+        self._match_num -= 1
+        if self._match_num < 0:
+            self._match_num = len(self._matches)-1
+        self._currentCursor = self._matches[self._match_num]
+
+    def cancel_find(self):
+        """ Clears all hilighted search terms and matches """
+        self.editor_widget.setExtraSelections([])
+        self._search_widget.hide()
+        self._matches = []
+        self._match_num = 0
 
     def save_as(self, fname=None):
         """ Saves the contents of the widget to the file with filename @fname.
@@ -262,11 +361,11 @@ class PlainTextEditorWidget(QObject,object):
     @property
     def modified(self):
         """ True if the document has been modified by the user. """
-        return self.widget.document().isModified()
+        return self.editor_widget.document().isModified()
 
     @modified.setter
     def modified(self, value):
-        self.widget.document().setModified(value)
+        self.editor_widget.document().setModified(value)
 
     @property
     def name(self):
@@ -283,7 +382,7 @@ class PlainTextEditorWidget(QObject,object):
         """ Returns a name of the document suitable for display. """
         nm = self.name
         if len(nm) == 0:
-            nm = self.widget.tr("Untitled")
+            nm = self.editor_widget.tr("Untitled")
         if self.modified:
             nm = "* "+nm
         return nm
@@ -304,23 +403,29 @@ class PlainTextEditorWidget(QObject,object):
 
     @property
     def content(self):
-        return unicode(self.widget.document().toPlainText())
+        return unicode(self.editor_widget.document().toPlainText())
 
     @content.setter
     def content(self,cont):
-        self.widget.document().setPlainText(cont)
+        self.editor_widget.document().setPlainText(cont)
 
     @property
     def widget(self):
         return self._widget
 
     @property
+    def editor_widget(self):
+        """ The underlying QPlainTextEdit """
+        return self._editor_widget
+
+
+    @property
     def _currentCursor(self):
-        return self._widget.textCursor()
+        return self.editor_widget.textCursor()
 
     @_currentCursor.setter
     def _currentCursor(self,cursor):
-        self.widget.setTextCursor(cursor)
+        self.editor_widget.setTextCursor(cursor)
 
     @property
     def _cursorPos(self):
@@ -513,18 +618,18 @@ class PlainTextEditorWidget(QObject,object):
                 self.completer.popup().setCurrentIndex(
                         self.completer.completionModel().index(0, 0))
 
-                cursor_rect = self.widget.cursorRect()
+                cursor_rect = self.editor_widget.cursorRect()
                 cursor_rect.setWidth(self.completer.popup().sizeHintForColumn(0)
                                         + self.completer.popup().verticalScrollBar().sizeHint().width())
                 self.completer.complete(cursor_rect)
             except:
                 self.completer.popup().hide()
-                self.widget.clearFocus()
-                self.widget.setFocus(Qt.ActiveWindowFocusReason)
+                self.editor_widget.clearFocus()
+                self.editor_widget.setFocus(Qt.ActiveWindowFocusReason)
         else:
                 self.completer.popup().hide()
-                self.widget.clearFocus()
-                self.widget.setFocus(Qt.ActiveWindowFocusReason)
+                self.editor_widget.clearFocus()
+                self.editor_widget.setFocus(Qt.ActiveWindowFocusReason)
         return False
 
     def focusInEvent(self, event):
