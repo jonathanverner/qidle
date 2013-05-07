@@ -9,7 +9,7 @@ from insulate.debug import msg
 logger = logging.getLogger(__name__)
 
 from syntax import PythonHighlighter
-from util import substr, last_unmatched_char
+from util import substr, last_unmatched_char, load_script_to_unicode, save_script_from_unicode
 from search_bar import search_bar
 
 
@@ -294,7 +294,7 @@ class PlainTextEditorWidget(QObject,object):
                 return False
 
         try:
-            open(fname,'w').write(self.content)
+            save_script_from_unicode(fname,self.content)
             self.local_path = unicode(fname)
             self.modified = False
             self._emit_name_change()
@@ -328,7 +328,7 @@ class PlainTextEditorWidget(QObject,object):
             if len(fname) == 0:
                 return False
         try:
-            self.content = open(unicode(fname),'r').read()
+            self.content = load_script_to_unicode(unicode(fname))
             self.local_path = unicode(fname)
             self.modified = False
             self._emit_name_change()

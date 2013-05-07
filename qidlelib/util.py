@@ -1,5 +1,7 @@
 from sys import version_info
 import gzip
+import re
+from qidlelib.config import config
 
 if version_info[0] < 3:
     str_type = unicode
@@ -7,6 +9,8 @@ if version_info[0] < 3:
 else:
     str_type = str
     python_3 = True
+
+CODING_PATTERN = re.compile("coding: *([^ ]+)", re.IGNORECASE | re.UNICODE)
 
 
 def gzopen(fname, mode):
@@ -19,6 +23,49 @@ def gzopen(fname, mode):
         return gzip.open(fname,mode)
     else:
         return open(fname,mode)
+
+def load_script_to_unicode(fname):
+    """ Loads the filename @fname and converts it to unicode.
+        The encoding is guessed from a coding: line in the file
+        or the default_encoding in the config file is used.
+        If both fail, utf-8 is tried. If everything fails,
+        a string object is returned. """
+    script = open(unicode(fname),'rb').read()
+    try:
+        matches = CODING_PATTERN.findall(script)
+        if len(matches) > 0:
+            ret = unicode(script,encoding=matches[0])
+        else:
+            ret = unicode(script, encoding=config.default_encoding)
+    except:
+        try:
+            ret = unicode(script,encoding='utf-8')
+        except:
+            ret = script
+    return ret
+
+def save_script_from_unicode(fname, script):
+    """ Saves the script @script to the file @fname. The encoding
+        is guessed from the a coding: line if present in the script,
+        otherwise the default_encoding form the config file is used
+        or utf-8 if it is not set. If none of this succeeds, saves
+        the file as ASCII deleting non-ASCII characters!! No error
+        is given in this case !!!
+    """
+    try:
+        matches = CODING_PATTERN.findall(script)
+        if len(matches) > 0:
+            string = script.encode(encoding=matches[0])
+        else:
+            string = script.encode(encoding=config.default_encoding)
+    except:
+        try:
+            string = script.encode(encoding='utf-8')
+        except:
+            string = script.encode(encoding='ascii',errors='ignore')
+    f = open(fname,'wb')
+    f.write(string)
+    f.close()
 
 def substr(s, start_pos, end_chars, direction=1):
     """ Returns the largest substring of s which starts
