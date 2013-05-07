@@ -158,10 +158,6 @@ class PlainTextEditorWidget(QObject,object):
         self.editor_widget.document().modificationChanged.connect(self._emit_name_change)
 
         self._widget = QWidget(parent)
-        self.editor_widget.setStyleSheet("""
-            QWidget { border:none; }
-            }
-        """)
         self._search_widget.hide()
         self.widget.setLayout(self._widget_layout)
 
