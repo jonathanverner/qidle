@@ -73,6 +73,7 @@ class Qidle(QApplication):
         self.next_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+.")))
         self.prev_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+,")))
         self.shell_tab_action.setShortcut(QKeySequence(self.tr("Ctrl+1")))
+        self.quit_action.setShortcut(QKeySequence(self.tr("Ctrl+Q")))
 
     def _connect_actions(self):
         # File

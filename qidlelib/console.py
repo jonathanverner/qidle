@@ -292,7 +292,6 @@ class Console(QObject):
         super(Console, self).__init__()
         self.font_size = 10
         self.font = QFont("Ubuntu Mono", self.font_size)
-        self.allow_quit = True
         self.indent = self.DEFAULT_INDENT
         self.widget = widget
         self.hilighter = PythonHighlighter(self.widget.document())
@@ -716,15 +715,6 @@ class Console(QObject):
                 self.timer.timeout.connect(self._restart_shell_from_interrupt)
                 self.timer.start(1000)
                 self.interrupt_shell.emit()
-
-        # Ctrl-Q Handling
-        if event.matches(QKeySequence.Quit):
-            if self.allow_quit:
-                self.quit.emit()
-                # logger.debug(msg("Quitting ..."))
-                # self.widget.close()
-                event.ignore()
-            return
 
         # Ctrl-+/- Handling
         if event.matches(QKeySequence.ZoomIn):
