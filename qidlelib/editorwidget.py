@@ -245,7 +245,19 @@ class PlainTextEditorWidget(QObject,object):
         if not self.modified:
             return True
         else:
-            return self.save()
+            dlg = QMessageBox()
+            dlg.setText(dlg.tr("The document \""+self.display_name[2:]+"\" has unsaved changes."))
+            dlg.setInformativeText(dlg.tr("Would you like to save them?"))
+            dlg.setStandardButtons(QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
+            dlg.setDefaultButton(QMessageBox.Save)
+            dlg.setIcon(QMessageBox.Warning)
+            ret = dlg.exec_()
+            if ret == QMessageBox.Save:
+                return self.save()
+            elif ret == QMessageBox.Discard:
+                return True
+            elif ret == QMessageBox.Cancel:
+                return False
 
     @property
     def modified(self):
