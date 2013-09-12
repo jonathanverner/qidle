@@ -11,7 +11,7 @@ from packagecomplete import find_packages
 
 import logging
 from insulate.debug import msg, filt
-import savestate
+#import savestate
 logger = logging.getLogger(__name__)
 
 
