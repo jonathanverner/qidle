@@ -4,6 +4,9 @@ import codecs
 
 
 class configuration(object):
+    history = True
+    history_file = "~/.qidle_history"
+    history_size = 1000
 
     def __getitem__(self, key):
         return self.__dict__[key]
